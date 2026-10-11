@@ -1,6 +1,6 @@
 ---
 name: kinocut
-description: Use Kinocut for guarded video editing, source-backed planning, FFmpeg operations, media analysis, subtitles, audio workflows, Hyperframes or Revideo rendering, repurposing packages, and release checkpoints through an MCP server, Python client, or CLI. Trigger when an agent needs to inspect, plan, edit, render, validate, or package local media safely.
+description: Use when an agent must edit local video safely. Kinocut guards planning, FFmpeg operations, subtitles, audio, analysis, quality gates, receipts, repurposing, and Hyperframes via MCP, Python, or CLI.
 ---
 
 # Kinocut
