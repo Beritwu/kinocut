@@ -326,17 +326,17 @@ class TestVisionEndpoint:
     def test_resolve_env_local_host(self, monkeypatch):
         from mcp_video.image_engine import resolve_vision_endpoint
 
-        monkeypatch.setenv("KINOCUT_VISION_BASE_URL", "http://127.0.0.1:8817")
+        monkeypatch.setenv("KINOCUT_VISION_BASE_URL", "http://127.0.0.1:19876")
         monkeypatch.setenv("KINOCUT_VISION_MODEL", "qwen3.8-27b-vision")
         r = resolve_vision_endpoint()
-        assert r["base_url"] == "http://127.0.0.1:8817"
+        assert r["base_url"] == "http://127.0.0.1:19876"
         assert r["endpoint_kind"] == "local"
         assert r["model"] == "qwen3.8-27b-vision"
 
     def test_resolve_param_beats_env(self, monkeypatch):
         from mcp_video.image_engine import resolve_vision_endpoint
 
-        monkeypatch.setenv("KINOCUT_VISION_BASE_URL", "http://localhost:8788")
+        monkeypatch.setenv("KINOCUT_VISION_BASE_URL", "http://localhost:19877")
         r = resolve_vision_endpoint(base_url="http://localhost:9999", model="m2")
         assert r["base_url"] == "http://localhost:9999"
         assert r["model"] == "m2"
@@ -386,14 +386,14 @@ class TestVisionEndpoint:
         from mcp_video.image_engine import resolve_vision_endpoint, _resolve_vision_api_key
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        key = _resolve_vision_api_key(resolve_vision_endpoint(base_url="http://localhost:8788"))
+        key = _resolve_vision_api_key(resolve_vision_endpoint(base_url="http://localhost:19877"))
         assert key == "local-endpoint"
 
     def test_local_endpoint_always_uses_placeholder(self, monkeypatch):
         from mcp_video.image_engine import resolve_vision_endpoint, _resolve_vision_api_key
 
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-real-key")
-        key = _resolve_vision_api_key(resolve_vision_endpoint(base_url="http://localhost:8788"))
+        key = _resolve_vision_api_key(resolve_vision_endpoint(base_url="http://localhost:19877"))
         assert key == "local-endpoint"
 
     def test_analyze_product_local_endpoint_end_to_end(self, monkeypatch):
@@ -424,7 +424,7 @@ class TestVisionEndpoint:
         monkeypatch.setitem(sys.modules, "anthropic", fake)
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.setenv("KINOCUT_VISION_BASE_URL", "http://127.0.0.1:8817")
+        monkeypatch.setenv("KINOCUT_VISION_BASE_URL", "http://127.0.0.1:19876")
         monkeypatch.setenv("KINOCUT_VISION_MODEL", "qwen3.8-27b-vision")
 
         from mcp_video.image_engine import analyze_product
@@ -436,7 +436,7 @@ class TestVisionEndpoint:
             assert result.description == "A solid blue product image."
             assert captured["client_kwargs"] == {
                 "api_key": "local-endpoint",
-                "base_url": "http://127.0.0.1:8817",
+                "base_url": "http://127.0.0.1:19876",
             }
             assert captured["create_kwargs"]["model"] == "qwen3.8-27b-vision"
         finally:
