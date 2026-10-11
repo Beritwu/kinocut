@@ -1,0 +1,41 @@
+{
+  "tiers": {
+    "T1": {
+      "class": "local-model",
+      "model": "local-model",
+      "endpoint": "http://localhost:8080/v1",
+      "alt_endpoint": null,
+      "host_lane": "local",
+      "api": "openai-chat-completions",
+      "cloud_keys": false
+    },
+    "T2": {
+      "class": "local-model",
+      "model": "local-model",
+      "endpoint": "http://localhost:8080/v1",
+      "alt_endpoint": null,
+      "host_lane": "local",
+      "api": "openai-chat-completions",
+      "cloud_keys": false
+    },
+    "T3": {
+      "class": "local-model",
+      "model": "local-model",
+      "endpoint": "http://localhost:8080/v1",
+      "alt_endpoint": null,
+      "host_lane": "local",
+      "api": "openai-chat-completions",
+      "cloud_keys": false
+    },
+    "cli-ground-truth": {
+      "class": "deterministic-cli",
+      "model": null,
+      "endpoint": null,
+      "alt_endpoint": null,
+      "host_lane": "local",
+      "api": "cli",
+      "cloud_keys": false
+    }
+  },
+  "_note": "Generic placeholder with safe non-routable defaults. Internal hostnames removed per Security ruling SEC-KINOCUT-G3-RECONCILIATION-2026-10-11."
+}
