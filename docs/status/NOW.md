@@ -47,10 +47,10 @@ supersede the earlier blocked observations for issue #479. Candidate 1.16.0,
 other pages/providers, visual acceptance and the Phase-0 exit are not accepted
 by this check.
 
-**Desk residual:** Colima is the operator M4 Mac, not Mini. Do not restart `forgejo-runner` mid-job (exact 80s fail). Perf-committee reports are inspect receipts only ([README](perf-committee/README.md)). Receipt: [2026-08-19-ops-closeout.md](2026-08-19-ops-closeout.md).
+**Desk residual:** Colima is the operator M4 Mac, not Mini. Do not restart `forgejo-runner` mid-job (exact 80s fail). Perf-committee reports are inspect receipts only ([README](perf-committee/README.md)). Receipt: 2026-08-19 ops closeout (removed 2026-10-11; see git history).
 
 **Perf receipt:** cheap CLI + import timings in [golden-path-timings.md](golden-path-timings.md) — baseline only, not an optimized claim.
 
 **Current development review:** [2026-09-30 ops disposition](2026-09-30-ops-disposition.md) records which old operational gates are superseded and which still require owner evidence. Local runtime adaptations are Unreleased; published identity remains above.
 
-**Living authority:** [ops closeout 2026-08-19](2026-08-19-ops-closeout.md) · [residual matrix](2026-08-12-residual-maturity-matrix.md) · [HUMAN_GATES](../HUMAN_GATES.md). S+ excellence PRD is local-only (`.omx/plans/`, gitignored).
+**Living authority:** ops closeout 2026-08-19 (removed; see git history) · [residual matrix](2026-08-12-residual-maturity-matrix.md) · [HUMAN_GATES](../HUMAN_GATES.md). S+ excellence PRD is local-only (`.omx/plans/`, gitignored).

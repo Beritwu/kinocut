@@ -7,7 +7,7 @@ are load-bearing; this is the map the hardening pass works from, not an audit
 verdict. Verification pass per item follows in the full workstream.
 
 Legend — **Local-endpoint support**: does the call site accept a LOCAL
-OpenAI-compatible endpoint (org-engines Air `:8817` / mini `:8788`, LM Studio,
+OpenAI-compatible endpoint (engines Air `:8817` / mini `:8788`, LM Studio,
 llama-server, Ollama) instead of a fixed cloud API? `yes` / `no` / `partial`.
 
 ## 1. ASR — Whisper transcription (library inference, local)
@@ -17,7 +17,7 @@ llama-server, Ollama) instead of a fixed cloud API? `yes` / `no` / `partial`.
 | Call | `import whisper` → `whisper.load_model(model)` → `.transcribe()` |
 | Sites | `kinocut/ai_engine/transcribe.py:173,205-215` (MCP `video_ai_transcribe`, `kinocut/server_tools_ai.py:47-60`); longform chunk path `kinocut/ai_engine/_longform_runtime.py:45-59`; longform entry `kinocut/ai_engine/transcribe_longform.py`; repurpose `video_repurpose_*` uses `whisper_model` param (`kinocut/server_tools_ai.py:67-117`) |
 | Transport | In-process library (openai-whisper, torch). No HTTP. Model weights download once from the public whisper CDN into `~/.cache/whisper/` on first use; `kinocut/rescue/capabilities.py:26-28` probes that cache path |
-| Local-endpoint | **yes (n/a-by-design)** — runs fully local; no endpoint involved. Not wired to the org-engines HTTP endpoints (no need today) |
+| Local-endpoint | **yes (n/a-by-design)** — runs fully local; no endpoint involved. Not wired to the engines HTTP endpoints (no need today) |
 | Cloud-default | none |
 | Degradation | fail-closed with honest receipt: `dependency_error` / `code="missing_whisper"` + `suggested_action` install hint (`transcribe.py:175-186`, `_longform_runtime.py:47-58`); rescue lane gates the `openai-whisper` executor on a capability probe (`kinocut/rescue/policy.py:43-45`, `capabilities.py:76-91`) |
 | Gap for hardening | offline-first: no pre-cache/seeding story for weights; small-model profiles (tiny/base) not receipt-compared for accuracy vs `large` |
