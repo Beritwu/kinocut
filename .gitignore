@@ -81,3 +81,7 @@ glama-score*.png
 # Agent scratch (GJC) and act-runner state — never commit these
 .gjc/
 .runner
+
+# privity: no committed runtime logs
+*.log
+!docs/research/**/*.log
