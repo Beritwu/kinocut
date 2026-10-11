@@ -65,7 +65,7 @@ starving apt/curl) is closed: runner home is VM-local
 `/mnt/lima-colima/forgejo-runner`; `claims-live.yml` runs on `heavy`.
 See [CI_RUNNER_TOPOLOGY.md](CI_RUNNER_TOPOLOGY.md) (**Agent land recipe**: idle
 restart → ~90s warm → empty-commit retrigger) and
-[ops closeout](status/2026-08-19-ops-closeout.md).
+ops closeout 2026-08-19 (removed 2026-10-11; see git history).
 
 The Actions API still does not expose step-level logs. If a future job is
 red without statuses, read
