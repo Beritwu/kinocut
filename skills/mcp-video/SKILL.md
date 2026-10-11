@@ -1,6 +1,6 @@
 ---
 name: mcp-video
-description: Compatibility skill for the former mcp-video name. Use Kinocut for guarded local video inspection, editing, rendering, and verification.
+description: Use when a tool or doc references mcp-video, the former name. Kinocut is the same guarded local video toolkit: inspect, edit, render, verify.
 ---
 
 # mcp-video compatibility
