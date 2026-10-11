@@ -25,7 +25,7 @@ MAX_IMAGE_PIXELS = 50_000_000  # ~50 MP (e.g. 7168x7168); guards against decompr
 
 # Local-first hardening (workstream C, 2026-09-19): the AI description is the one
 # cloud-API call in the package. These env/param hooks give it a LOCAL endpoint path
-# (org-engines :8817/:8788, LM Studio, llama-server, any Anthropic-compatible gateway)
+# (local endpoints: LM Studio, llama-server, any Anthropic-compatible gateway)
 # without changing the cloud default: still opt-in via use_ai, still fail-closed.
 # Pattern replicated from the 360 sphere director (te/sphere_director.py) — the
 # workstream-C exemplar.
@@ -42,14 +42,26 @@ def resolve_vision_endpoint(
     """Resolve the AI-description endpoint (param > env). No network call.
 
     Returns base_url (None = Anthropic cloud default), model id, and the
-    endpoint kind ("local" / "cloud" / None when no endpoint override is set).
+    endpoint kind ("local" / "custom" / None when no endpoint override is set).
+    Remote non-Anthropic endpoints must use HTTPS; raises MCPVideoError otherwise.
     """
     resolved_url = (base_url or os.environ.get(ENV_VISION_BASE_URL) or "").strip() or None
     resolved_model = (model or os.environ.get(ENV_VISION_MODEL) or "").strip() or None
     kind = None
     if resolved_url:
         host = (urlparse(resolved_url).hostname or "").lower()
-        kind = "local" if host in _LOCAL_VISION_HOSTS else "cloud"
+        scheme = (urlparse(resolved_url).scheme or "").lower()
+        if host not in _LOCAL_VISION_HOSTS:
+            if scheme != "https":
+                raise MCPVideoError(
+                    f"Remote vision endpoints must use HTTPS (got {scheme}://{host}). "
+                    "Use a local loopback endpoint for HTTP.",
+                    error_type="validation_error",
+                    code="insecure_endpoint",
+                )
+            kind = "custom"
+        else:
+            kind = "local"
     return {
         "base_url": resolved_url,
         "model": resolved_model or DEFAULT_VISION_MODEL,
@@ -58,13 +70,28 @@ def resolve_vision_endpoint(
 
 
 def _resolve_vision_api_key(endpoint: dict[str, Any]) -> str:
-    """API key for the vision call. Local endpoints need no cloud credential."""
+    """API key for the vision call. Local endpoints need no cloud credential.
+
+    Custom remote endpoints use KINOCUT_VISION_API_KEY (separate from Anthropic's
+    cloud key) to prevent credential leakage to arbitrary destinations.
+    """
+    if endpoint["endpoint_kind"] == "local":
+        # No cloud auth exists to fail; the SDK merely requires a non-empty key.
+        return "local-endpoint"
+    if endpoint["endpoint_kind"] == "custom":
+        custom_key = os.environ.get("KINOCUT_VISION_API_KEY")
+        if custom_key:
+            return custom_key
+        raise MCPVideoError(
+            "KINOCUT_VISION_API_KEY environment variable is required for custom "
+            "remote vision endpoints. Do not use ANTHROPIC_API_KEY for non-Anthropic endpoints.",
+            error_type="auth_error",
+            code="missing_custom_api_key",
+        )
+    # Cloud (Anthropic official): use ANTHROPIC_API_KEY
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if api_key:
         return api_key
-    if endpoint["base_url"] and endpoint["endpoint_kind"] == "local":
-        # No cloud auth exists to fail; the SDK merely requires a non-empty key.
-        return "local-endpoint"
     raise MCPVideoError(
         "ANTHROPIC_API_KEY environment variable is required for AI descriptions "
         "(or point KINOCUT_VISION_BASE_URL at a local endpoint).",

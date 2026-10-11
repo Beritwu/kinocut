@@ -341,12 +341,20 @@ class TestVisionEndpoint:
         assert r["base_url"] == "http://localhost:9999"
         assert r["model"] == "m2"
 
-    def test_resolve_cloud_host_classified(self, monkeypatch):
+    def test_resolve_custom_host_classified(self, monkeypatch):
         from mcp_video.image_engine import resolve_vision_endpoint
 
         monkeypatch.delenv("KINOCUT_VISION_BASE_URL", raising=False)
         r = resolve_vision_endpoint(base_url="https://api.example.com")
-        assert r["endpoint_kind"] == "cloud"
+        assert r["endpoint_kind"] == "custom"
+
+    def test_resolve_remote_http_rejected(self, monkeypatch):
+        from mcp_video.image_engine import resolve_vision_endpoint
+
+        monkeypatch.delenv("KINOCUT_VISION_BASE_URL", raising=False)
+        with pytest.raises(MCPVideoError) as exc_info:
+            resolve_vision_endpoint(base_url="http://api.example.com")
+        assert exc_info.value.code == "insecure_endpoint"
 
     def test_api_key_fail_closed_without_local_endpoint(self, monkeypatch):
         from mcp_video.image_engine import resolve_vision_endpoint, _resolve_vision_api_key
@@ -357,13 +365,22 @@ class TestVisionEndpoint:
             _resolve_vision_api_key(resolve_vision_endpoint())
         assert exc_info.value.code == "missing_api_key"
 
-    def test_api_key_fail_closed_for_cloud_base_url(self, monkeypatch):
+    def test_api_key_fail_closed_for_custom_endpoint(self, monkeypatch):
         from mcp_video.image_engine import resolve_vision_endpoint, _resolve_vision_api_key
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("KINOCUT_VISION_API_KEY", raising=False)
         with pytest.raises(MCPVideoError) as exc_info:
             _resolve_vision_api_key(resolve_vision_endpoint(base_url="https://api.example.com"))
-        assert exc_info.value.code == "missing_api_key"
+        assert exc_info.value.code == "missing_custom_api_key"
+
+    def test_custom_endpoint_uses_separate_key(self, monkeypatch):
+        from mcp_video.image_engine import resolve_vision_endpoint, _resolve_vision_api_key
+
+        monkeypatch.setenv("KINOCUT_VISION_API_KEY", "custom-key-123")
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        key = _resolve_vision_api_key(resolve_vision_endpoint(base_url="https://api.example.com"))
+        assert key == "custom-key-123"
 
     def test_local_endpoint_needs_no_cloud_credential(self, monkeypatch):
         from mcp_video.image_engine import resolve_vision_endpoint, _resolve_vision_api_key
@@ -372,12 +389,12 @@ class TestVisionEndpoint:
         key = _resolve_vision_api_key(resolve_vision_endpoint(base_url="http://localhost:8788"))
         assert key == "local-endpoint"
 
-    def test_env_key_wins_over_local_placeholder(self, monkeypatch):
+    def test_local_endpoint_always_uses_placeholder(self, monkeypatch):
         from mcp_video.image_engine import resolve_vision_endpoint, _resolve_vision_api_key
 
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-real-key")
         key = _resolve_vision_api_key(resolve_vision_endpoint(base_url="http://localhost:8788"))
-        assert key == "sk-test-real-key"
+        assert key == "local-endpoint"
 
     def test_analyze_product_local_endpoint_end_to_end(self, monkeypatch):
         """Full opt-in AI path against a FAKE local Anthropic-compatible client.

@@ -68,7 +68,7 @@ def test_receipt_schema_validation() -> None:
     good = {
         "tier": "T2",
         "model": "llama-3-8b",
-        "endpoint": "http://mini:8788/v1",
+        "endpoint": "http://localhost:8788/v1",
         "step": "trim",
         "attempt": 1,
         "tool_call": "video_trim",

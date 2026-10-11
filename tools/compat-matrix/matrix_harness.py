@@ -10,7 +10,7 @@ receipt) in two modes:
   runs once via the ``kino`` CLI to produce the ground-truth artifact that
   later model-driven runs are compared against (spec: "deterministic fallback
   path"). Caption is reported ``not_wired`` in the skeleton era (local-whisper
-  ground truth is a mini/G2 model lane — compute law), never faked.
+  ground truth is a local model lane — compute law), never faked.
 - ``agent`` (build order 2+): refuses to run — T1 wiring is a later burst.
 
 Laws baked in (spec Constraints): zero spend (DIR-0010) — this mode performs
@@ -319,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.mode == "agent":
         print(
             "agent mode is not wired: T1 wiring is COMPAT-MATRIX-SPEC build order 2 "
-            "(org-engines endpoint, mini/nucbox lane). Refusing to fake a model run."
+            "(local model endpoint). Refusing to fake a model run."
         )
         return 2
 
