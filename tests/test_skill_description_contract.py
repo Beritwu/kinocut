@@ -3,6 +3,7 @@
 Every shipped skill description must be <=250 chars (ZCode truncates at 250)
 with a self-contained first sentence (trigger phrase) — per GC-DIST SPEC §1.
 """
+
 from __future__ import annotations
 
 import re
@@ -40,5 +41,7 @@ def test_first_sentence_self_contained():
         desc = m.group(1).strip()
         first = desc.split(". ")[0] + "."
         assert len(first) <= 80, f"{p.parent.name}: first sentence {len(first)} chars > 80"
-        assert re.search(r"\b(inspect|edit|plan|render|use|turn|guarded|translate|validate|package)\b", first, re.I) or "Use" in first, \
-            f"{p.parent.name}: first sentence lacks a trigger verb"
+        assert (
+            re.search(r"\b(inspect|edit|plan|render|use|turn|guarded|translate|validate|package)\b", first, re.I)
+            or "Use" in first
+        ), f"{p.parent.name}: first sentence lacks a trigger verb"
