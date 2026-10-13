@@ -4,7 +4,7 @@
   </a>
 </p>
 
-<!-- mcp-name: io.github.KyaniteLabs/kinocut -->
+<!-- mcp-name: tech.kyanitelabs/kinocut -->
 
 <h1 align="center">Kinocut</h1>
 
