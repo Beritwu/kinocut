@@ -206,6 +206,27 @@ def test_positional_images_and_float_fps_still_work(tmp_path):
     assert rate == "12/1"
 
 
+@requires_ffmpeg
+def test_mcp_tool_accepts_list_file_and_rational_rate(tmp_path):
+    from mcp_video.server_tools_advanced import video_create_from_images
+
+    images = [_write_png(tmp_path / f"frame_{i}.png", 16, 16) for i in range(3)]
+    list_file = tmp_path / "frames.txt"
+    list_file.write_text("\n".join(images) + "\n", encoding="utf-8")
+    output = tmp_path / "mcp.mp4"
+
+    result = video_create_from_images(
+        list_file=str(list_file),
+        output_path=str(output),
+        fps="30000/1001",
+    )
+
+    assert result["success"] is True
+    frames, rate = _probe_frames(str(output))
+    assert frames == 3
+    assert rate == "30000/1001"
+
+
 def test_mcp_tool_rejects_invalid_frame_rates(tmp_path):
     from mcp_video.server_tools_advanced import video_create_from_images
 
