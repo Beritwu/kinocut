@@ -112,7 +112,7 @@ obtain the human decision before invoking acceptance. Rendering rechecks source 
 | `stabilize` | Stabilize shaky footage |
 | `apply-mask` | Apply image mask with feathering |
 | `detect-scenes` | Detect scene changes |
-| `create-from-images` | Create video from image sequence |
+| `create-from-images` | Create a frame-exact video from an image sequence. `--list FILE` reads one image path per line; `--fps` accepts an integer, decimal, or rational rate such as `30000/1001`. |
 | `export-frames` | Export video as image frames (--image-format for format) |
 | `compare-quality` | Compare PSNR/SSIM quality metrics |
 | `read-metadata` | Read video metadata tags |
