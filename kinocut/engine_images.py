@@ -36,7 +36,7 @@ def create_from_images(
     one image path per line; blank lines are ignored.
     """
     inputs = _resolve_inputs(images, list_file)
-    fps_value, fps_arg = _coerce_fps(fps)
+    _, fps_arg = _coerce_fps(fps)
     validated_images = [_validate_input_path(img) for img in inputs]
 
     output = output_path or _auto_output(validated_images[0], "from_images")
@@ -44,23 +44,23 @@ def create_from_images(
     with _timed_operation() as timing:
         tmpdir = tempfile.mkdtemp(prefix="mcp_video_imgseq_")
         try:
-            sequence = (
-                validated_images if _all_even_png(validated_images) else _normalize_images(validated_images, tmpdir)
-            )
-            concat_file = _write_concat_file(sequence, tmpdir, fps_value)
+            if _all_even_png(validated_images):
+                extension = ".png"
+                _link_image_sequence(validated_images, tmpdir)
+            else:
+                normalized = _normalize_images(validated_images, tmpdir)
+                extension = os.path.splitext(normalized[0])[1]
             _run_ffmpeg(
                 [
-                    "-f",
-                    "concat",
-                    "-safe",
+                    "-framerate",
+                    fps_arg,
+                    "-start_number",
                     "0",
                     "-i",
-                    concat_file,
+                    _sequence_pattern(tmpdir, extension),
                     "-c:v",
                     "libx264",
                     *_quality_args(),
-                    "-r",
-                    fps_arg,
                     "-frames:v",
                     str(len(validated_images)),
                     "-pix_fmt",
@@ -115,6 +115,8 @@ def _format_fps_for_ffmpeg(fps: float | int | str) -> str:
 
 def _coerce_fps(fps: float | int | str) -> tuple[float, str]:
     """Validate an FPS value and return its numeric and FFmpeg-serialized forms."""
+    if isinstance(fps, bool):
+        raise _invalid_fps(fps)
     if isinstance(fps, str):
         match = _RATIONAL_FPS_PATTERN.match(fps)
         if match:
@@ -189,6 +191,25 @@ def _png_size(path: str) -> tuple[int, int] | None:
     return width, height
 
 
+def _sequence_pattern(tmpdir: str, extension: str) -> str:
+    """Return the contiguous image2 pattern consumed by FFmpeg."""
+    return os.path.join(tmpdir, f"frame_%08d{extension}")
+
+
+def _link_image_sequence(images: list[str], tmpdir: str) -> None:
+    """Expose even-dimension PNGs as a contiguous sequence without re-encoding.
+
+    Hard links keep the original bytes; filesystem or privilege limitations
+    fall back to a copy. Symlinks are deliberately never used.
+    """
+    for index, image in enumerate(images):
+        target = os.path.join(tmpdir, f"frame_{index:08d}.png")
+        try:
+            os.link(image, target)
+        except OSError:
+            shutil.copy2(image, target)
+
+
 def _normalize_images(images: list[str], tmpdir: str) -> list[str]:
     has_png = any(img.lower().endswith(".png") for img in images)
     img_format = "png" if has_png else "jpg"
@@ -196,7 +217,7 @@ def _normalize_images(images: list[str], tmpdir: str) -> list[str]:
 
     normalized: list[str] = []
     for i, img in enumerate(images):
-        norm_path = os.path.join(tmpdir, f"img_{i:04d}{ext}")
+        norm_path = os.path.join(tmpdir, f"frame_{i:08d}{ext}")
         if img_format == "png":
             _run_ffmpeg(
                 [
@@ -225,14 +246,3 @@ def _normalize_images(images: list[str], tmpdir: str) -> list[str]:
             )
         normalized.append(norm_path)
     return normalized
-
-
-def _write_concat_file(normalized: list[str], tmpdir: str, fps: float) -> str:
-    concat_file = os.path.join(tmpdir, "concat.txt")
-    img_duration = 1.0 / fps
-    with open(concat_file, "w", encoding="utf-8") as handle:
-        for img in normalized:
-            abs_path = os.path.abspath(img).replace("\\", "\\\\").replace("'", "'\\''")
-            handle.write(f"file '{abs_path}'\n")
-            handle.write(f"duration {img_duration!r}\n")
-    return concat_file
