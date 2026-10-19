@@ -13,7 +13,12 @@ This project follows a simple release-note style:
 
 ### Added
 
+- Accept rational frame rates such as `30000/1001` for `create-from-images` in Python, CLI (`--fps`) and MCP, and add `--list FILE` / `list_file` input with one image path per line so long frame sequences no longer pass through argv.
 - Add an opt-in exact probe: `kino info <file> --exact`, `Client.info(path, exact=True)` and MCP `video_info(input_path, exact=true)` additionally report `frame_count` (decoded with ffprobe `-count_frames`), `frame_count_source: "decoded"`, and the raw `r_frame_rate` / `avg_frame_rate` strings exactly as ffprobe reports them. Values that cannot be measured (for example a `0/1` rate) are `null`, never a default. The default `info` output and cost are unchanged; the exact mode decodes the whole video stream and uses a longer probe timeout.
+
+### Fixed
+
+- Make `create-from-images` frame-exact: N inputs now encode exactly N frames at the requested rate, with no duplicated trailing entry and no float-duration surplus. Even-dimension PNG inputs skip the per-image normalization pass.
 
 ## 1.16.1 - 2026-10-05
 

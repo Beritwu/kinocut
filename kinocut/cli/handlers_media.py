@@ -203,17 +203,38 @@ def _register_batch_commands(runner: CommandRunner) -> None:
             min_scene_duration="min_duration",
         ),
     )
-    runner.register(
-        "create-from-images",
-        engine_cmd(
-            "mcp_video.engine:create_from_images",
-            "Creating video from images...",
-            "inputs",
-            formatter=_format_edit_text,
-            output_path="output",
-            fps="fps",
-        ),
-    )
+
+    def _create_from_images(a, j):
+        from ..engine_images import create_from_images
+        from ..errors import MCPVideoError
+
+        inputs = a.inputs or None
+        if inputs and a.list_file:
+            raise MCPVideoError(
+                "Provide either input image paths or --list, not both",
+                error_type="validation_error",
+                code="conflicting_inputs",
+            )
+        if not inputs and not a.list_file:
+            raise MCPVideoError(
+                "No images provided",
+                error_type="validation_error",
+                code="empty_images",
+            )
+        _out(
+            _with_spinner(
+                "Creating video from images...",
+                create_from_images,
+                inputs,
+                output_path=a.output,
+                fps=a.fps,
+                list_file=a.list_file,
+            ),
+            j,
+            _format_edit_text,
+        )
+
+    runner.register("create-from-images", _create_from_images)
 
     def _export_frames(a, j):
         _out(
