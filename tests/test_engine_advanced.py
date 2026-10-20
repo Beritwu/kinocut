@@ -1,5 +1,6 @@
 """Advanced engine tests for uncovered operations and edge cases — needs FFmpeg."""
 
+import contextlib
 import os
 import subprocess
 
@@ -1167,6 +1168,8 @@ class TestImageSequences:
 
         monkeypatch.setattr(engine_images, "_normalize_images", lambda images, tmpdir: images)
         monkeypatch.setattr(engine_images, "_run_ffmpeg", lambda cmd: calls.append(cmd))
+        monkeypatch.setattr(engine_images, "_verify_output_frame_count", lambda path, expected: None)
+        monkeypatch.setattr(engine_images, "_atomic_output", lambda path: contextlib.nullcontext(path))
         monkeypatch.setattr(
             engine_images,
             "_build_edit_result",

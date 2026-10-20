@@ -6,6 +6,7 @@ normalization tests are hermetic and only need the generated PNG fixtures.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shutil
@@ -117,6 +118,12 @@ def _mean_rgb(frame: bytes) -> tuple[float, float, float]:
 
 def _color_distance(left: tuple[float, float, float], right: tuple[int, int, int]) -> float:
     return sum((left[channel] - right[channel]) ** 2 for channel in range(3))
+
+
+@contextlib.contextmanager
+def _unstaged_output(path):
+    """Stand-in for atomic publication when FFmpeg itself is stubbed out."""
+    yield path
 
 
 SEQUENCE_COLORS: list[tuple[int, int, int]] = [
@@ -306,6 +313,8 @@ def test_even_dimension_pngs_skip_normalization(tmp_path, monkeypatch):
 
     monkeypatch.setattr(engine_images, "_normalize_images", fake_normalize)
     monkeypatch.setattr(engine_images, "_run_ffmpeg", lambda args: None)
+    monkeypatch.setattr(engine_images, "_verify_output_frame_count", lambda path, expected: None)
+    monkeypatch.setattr(engine_images, "_atomic_output", _unstaged_output)
     monkeypatch.setattr(
         engine_images,
         "_build_edit_result",
@@ -329,6 +338,8 @@ def test_odd_dimension_pngs_are_normalized(tmp_path, monkeypatch):
 
     monkeypatch.setattr(engine_images, "_normalize_images", fake_normalize)
     monkeypatch.setattr(engine_images, "_run_ffmpeg", lambda args: None)
+    monkeypatch.setattr(engine_images, "_verify_output_frame_count", lambda path, expected: None)
+    monkeypatch.setattr(engine_images, "_atomic_output", _unstaged_output)
     monkeypatch.setattr(
         engine_images,
         "_build_edit_result",
@@ -526,6 +537,8 @@ def _stub_encode(monkeypatch, engine_images, calls):
 
     monkeypatch.setattr(engine_images, "_normalize_images", fake_normalize)
     monkeypatch.setattr(engine_images, "_run_ffmpeg", lambda args: None)
+    monkeypatch.setattr(engine_images, "_verify_output_frame_count", lambda path, expected: None)
+    monkeypatch.setattr(engine_images, "_atomic_output", _unstaged_output)
     monkeypatch.setattr(
         engine_images,
         "_build_edit_result",
@@ -880,3 +893,105 @@ def test_percent_in_the_temp_directory_still_encodes_exactly(tmp_path, monkeypat
     for index, actual in enumerate(observed):
         distances = [_color_distance(actual, expected) for expected in SEQUENCE_COLORS[:3]]
         assert min(range(len(distances)), key=distances.__getitem__) == index
+
+
+# ---------------------------------------------------------------------------
+# PR #616 review: corrupt inputs must fail; booleans rejected at MCP admission
+# ---------------------------------------------------------------------------
+
+
+def _truncate_to_header(path: str) -> None:
+    """Keep only the PNG signature and IHDR dimensions, as a corrupt file would."""
+    with open(path, "rb") as handle:
+        header = handle.read(24)
+    with open(path, "wb") as handle:
+        handle.write(header)
+
+
+@requires_ffmpeg
+@pytest.mark.parametrize("force_normalizer", [False, True], ids=["fast-path", "normalizer"])
+def test_corrupt_middle_png_fails_instead_of_dropping_a_frame(tmp_path, monkeypatch, force_normalizer):
+    from mcp_video import engine_images
+
+    if force_normalizer:
+
+        def failing_link(*args, **kwargs):
+            raise OSError("cross-device link")
+
+        monkeypatch.setattr(engine_images.os, "link", failing_link)
+    images = [_write_png(tmp_path / f"frame_{i}.png", 16, 16, rgb=SEQUENCE_COLORS[i]) for i in range(3)]
+    _truncate_to_header(images[1])
+    output = tmp_path / "corrupt.mp4"
+
+    with pytest.raises(MCPVideoError) as exc_info:
+        engine_images.create_from_images(images, output_path=str(output), fps=30)
+
+    assert exc_info.value.error_type in {"processing_error", "input_error"}
+    assert not output.exists(), "an incomplete export must not be left behind as a success"
+
+
+@requires_ffmpeg
+def test_output_frame_count_is_verified_before_success(tmp_path, monkeypatch):
+    """Even if FFmpeg exits 0, a short output must not be reported as success."""
+    from mcp_video import engine_images
+
+    images = [_write_png(tmp_path / f"frame_{i}.png", 16, 16, rgb=SEQUENCE_COLORS[i]) for i in range(3)]
+    real_run = engine_images._run_ffmpeg
+
+    def drop_last_frame(args):
+        # Simulate an encoder that silently stops early: ask for one frame fewer.
+        args = list(args)
+        if "-frames:v" in args and "-update" not in args:
+            index = args.index("-frames:v") + 1
+            args[index] = str(int(args[index]) - 1)
+        return real_run(args)
+
+    monkeypatch.setattr(engine_images, "_run_ffmpeg", drop_last_frame)
+    output = tmp_path / "short.mp4"
+
+    with pytest.raises(MCPVideoError) as exc_info:
+        engine_images.create_from_images(images, output_path=str(output), fps=30)
+
+    assert exc_info.value.code == "frame_count_mismatch"
+    assert not output.exists()
+
+
+def _mcp_call(name, arguments):
+    import asyncio
+
+    from kinocut.server import mcp
+
+    return asyncio.run(mcp.call_tool(name, arguments))
+
+
+@pytest.mark.parametrize("fps", [True, False])
+def test_actual_mcp_call_rejects_boolean_fps_before_the_engine(tmp_path, monkeypatch, fps):
+    image = _write_png(tmp_path / "frame.png", 10, 10)
+    _forbid_engine(monkeypatch)
+
+    result = _mcp_call("video_create_from_images", {"images": [image], "fps": fps})
+
+    assert result.isError is True
+    assert result.structuredContent["success"] is False
+    assert result.structuredContent["error"]["type"] == "validation_error"
+
+
+@pytest.mark.parametrize("fps", [30, 29.97, "30000/1001", "60/1"])
+def test_actual_mcp_call_accepts_numeric_and_rational_fps(tmp_path, monkeypatch, fps):
+    from mcp_video import server_tools_advanced
+
+    image = _write_png(tmp_path / "frame.png", 10, 10)
+    seen = {}
+
+    def fake_engine(images, output_path=None, fps=None, list_file=None):
+        seen["fps"] = fps
+        return EditResult(output_path=str(tmp_path / "out.mp4"), operation="create_from_images")
+
+    monkeypatch.setattr(server_tools_advanced, "create_from_images", fake_engine)
+
+    result = _mcp_call("video_create_from_images", {"images": [image], "fps": fps})
+
+    payload = result[1] if isinstance(result, tuple) else result.structuredContent
+    assert payload["success"] is True
+    assert seen["fps"] == fps
+    assert type(seen["fps"]) is type(fps)

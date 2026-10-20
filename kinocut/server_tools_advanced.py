@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from pydantic import StrictFloat, StrictInt, StrictStr
+
 from .engine import (
     _validate_chroma_color,
     apply_filter,
@@ -377,7 +379,8 @@ def video_detect_scenes(
 def video_create_from_images(
     images: list[str] | None = None,
     output_path: str | None = None,
-    fps: float | str = 30.0,
+    # Strict members keep JSON true/false from being coerced to 1.0/0.0 before validation.
+    fps: StrictInt | StrictFloat | StrictStr = 30.0,
     list_file: str | None = None,
 ) -> dict[str, Any]:
     """Create a frame-exact video from a sequence of images.

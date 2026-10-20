@@ -12,7 +12,7 @@ import tempfile
 
 from .engine_runtime_utils import _build_edit_result, _movflags_args, _quality_args, _timed_operation
 from .paths import _auto_output
-from .ffmpeg_helpers import _run_ffmpeg
+from .ffmpeg_helpers import _atomic_output, _run_ffmpeg, _run_ffprobe_json
 from .errors import InputFileError, MCPVideoError
 from .ffmpeg_helpers import _validate_input_path, _validate_output_path
 from .limits import MAX_EXPORT_FRAMES_FPS, MAX_IMAGE_SEQUENCE_FRAMES, MAX_IMAGE_SEQUENCE_LIST_BYTES
@@ -46,7 +46,7 @@ def create_from_images(
 
     output = output_path or _auto_output(validated_images[0], "from_images")
     _validate_output_path(output)
-    with _timed_operation() as timing:
+    with _timed_operation() as timing, _atomic_output(output) as staged:
         tmpdir = tempfile.mkdtemp(prefix="mcp_video_imgseq_")
         try:
             link_dir = os.path.join(tmpdir, "linked")
@@ -58,6 +58,8 @@ def create_from_images(
                 sequence_dir, extension = tmpdir, os.path.splitext(normalized[0])[1]
             _run_ffmpeg(
                 [
+                    # A decode error in any input must fail the export, never drop a frame.
+                    "-xerror",
                     "-framerate",
                     fps_arg,
                     "-start_number",
@@ -71,18 +73,45 @@ def create_from_images(
                     str(len(validated_images)),
                     "-pix_fmt",
                     "yuv420p",
-                    *_movflags_args(output),
-                    output,
+                    *_movflags_args(staged),
+                    staged,
                 ]
             )
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
+        # Published only if this holds; on failure the staged file is discarded.
+        _verify_output_frame_count(staged, len(validated_images))
 
     return _build_edit_result(
         output,
         "create_from_images",
         timing,
     )
+
+
+def _verify_output_frame_count(path: str, expected: int) -> None:
+    """Fail unless the encoded video holds exactly ``expected`` frames.
+
+    The container's frame count is used when present; otherwise the video
+    stream is decoded and counted.
+    """
+    actual = _video_frame_count(_run_ffprobe_json(path))
+    if actual is None:
+        actual = _video_frame_count(_run_ffprobe_json(path, count_frames=True), key="nb_read_frames")
+    if actual != expected:
+        raise MCPVideoError(
+            f"create_from_images encoded {actual} frames for {expected} input images",
+            error_type="processing_error",
+            code="frame_count_mismatch",
+        )
+
+
+def _video_frame_count(info: dict, key: str = "nb_frames") -> int | None:
+    for stream in info.get("streams", []):
+        if stream.get("codec_type") == "video":
+            value = str(stream.get(key, ""))
+            return int(value) if value.isdigit() else None
+    return None
 
 
 def _resolve_inputs(images: list[str] | None, list_file: str | None) -> list[str]:
