@@ -374,22 +374,24 @@ def video_detect_scenes(
 @mcp.tool()
 @_safe_tool
 def video_create_from_images(
-    images: list[str],
+    images: list[str] | None = None,
     output_path: str | None = None,
-    fps: float = 30.0,
+    fps: float | str = 30.0,
+    list_file: str | None = None,
 ) -> dict[str, Any]:
-    """Create a video from a sequence of images.
+    """Create a frame-exact video from a sequence of images.
 
     Args:
         images: List of absolute paths to image files (in order).
         output_path: Where to save the output video. Auto-generated if omitted.
-        fps: Frames per second for the output video (default 30.0).
+        fps: Frames per second (default 30.0). Accepts a positive integer,
+             a decimal, or a rational string such as "30000/1001".
+        list_file: UTF-8 file with one absolute image path per line. Mutually
+            exclusive with ``images``.
     """
-    for _p in images:
+    for _p in images or []:
         _validate_input_path(_p)
-    if fps <= 0 or fps > MAX_EXPORT_FRAMES_FPS:
-        return _validation_error(f"fps must be between 1 and {MAX_EXPORT_FRAMES_FPS}, got {fps}")
-    return _result(create_from_images(images, output_path=output_path, fps=fps))
+    return _result(create_from_images(images, output_path=output_path, fps=fps, list_file=list_file))
 
 
 @mcp.tool()

@@ -11,6 +11,15 @@ This project follows a simple release-note style:
 
 ## Unreleased
 
+
+### Added
+
+- Accept rational frame rates such as `30000/1001` for `create-from-images` in Python, CLI (`--fps`) and MCP, and add `--list FILE` / `list_file` input with one image path per line so long frame sequences no longer pass through argv.
+
+### Fixed
+
+- Make `create-from-images` frame-exact: N inputs now encode exactly N frames at the requested rate, with no duplicated trailing entry and no float-duration surplus. Even-dimension PNG inputs skip the per-image normalization pass.
+
 ## 1.16.1 - 2026-10-05
 
 ### Fixed
