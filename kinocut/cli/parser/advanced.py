@@ -59,7 +59,7 @@ def _add_batch_parsers(subparsers: argparse._SubParsersAction) -> None:
         "--list",
         dest="list_file",
         metavar="FILE",
-        help="UTF-8 file with one absolute image path per line (alternative to inputs)",
+        help="UTF-8 file with one image path per line, at most 18000 (alternative to inputs)",
     )
     imgseq_p.add_argument("-o", "--output", help="Output video file path")
 

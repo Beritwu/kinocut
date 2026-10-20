@@ -11,14 +11,20 @@ This project follows a simple release-note style:
 
 ## Unreleased
 
-
 ### Added
 
 - Accept rational frame rates such as `30000/1001` for `create-from-images` in Python, CLI (`--fps`) and MCP, and add `--list FILE` / `list_file` input with one image path per line so long frame sequences no longer pass through argv.
 
+### Changed
+
+- `create-from-images` now rejects frame rates above 60 (`MAX_EXPORT_FRAMES_FPS`) with `validation_error` for Python and CLI callers too; previously only the MCP tool enforced the bound.
+- `create-from-images` accepts at most 18,000 images (`MAX_IMAGE_SEQUENCE_FRAMES`, 10 minutes at 30 fps) from positional paths, MCP `images` or a list file, and reads at most `MAX_IMAGE_SEQUENCE_LIST_BYTES` (18,432,000) bytes of a list file. Over-limit input fails with `validation_error` (`too_many_images` / `list_file_too_large`) before any image is checked.
+- The MCP `video_create_from_images` tool checks the image count, validates `list_file` with `_validate_input_path`, and enforces the frame-rate range before calling the engine. Rational rates take at most 18 ASCII digits per term.
+
 ### Fixed
 
-- Make `create-from-images` frame-exact: N inputs now encode exactly N frames at the requested rate, with no duplicated trailing entry and no float-duration surplus. Even-dimension PNG inputs skip the per-image normalization pass.
+- Make `create-from-images` frame-exact: N inputs now encode exactly N frames at the requested rate, with no duplicated trailing entry and no float-duration surplus. Even-dimension PNG inputs skip the per-image normalization pass: each is hard-linked into a private directory and its dimensions are read through that link, so a path renamed over or replaced by a symlink after validation cannot reach FFmpeg unchecked. Inputs that are symlinks at link time, are not even-dimension PNGs, or cannot be hard-linked fall back to the normalizer; inputs are never copied.
+- `create-from-images` works when the temporary directory path contains `%`.
 
 ## 1.16.1 - 2026-10-05
 

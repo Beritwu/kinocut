@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import math
 import os
 import re
@@ -14,11 +15,15 @@ from .paths import _auto_output
 from .ffmpeg_helpers import _run_ffmpeg
 from .errors import InputFileError, MCPVideoError
 from .ffmpeg_helpers import _validate_input_path, _validate_output_path
-from .limits import MAX_EXPORT_FRAMES_FPS
+from .limits import MAX_EXPORT_FRAMES_FPS, MAX_IMAGE_SEQUENCE_FRAMES, MAX_IMAGE_SEQUENCE_LIST_BYTES
 from .models import EditResult
 
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-_RATIONAL_FPS_PATTERN = re.compile(r"^\s*(\d+)\s*/\s*(\d+)\s*$")
+# ASCII digits only, bounded so int() never meets Python's digit-count limit.
+_RATIONAL_FPS_PATTERN = re.compile(r"^\s*([0-9]{1,18})\s*/\s*([0-9]{1,18})\s*$")
+# Write one image to a literal path: without -update the image2 muxer expands
+# "%" sequences in the output name, which breaks a temp directory containing "%".
+_SINGLE_IMAGE_OUTPUT_ARGS = ("-frames:v", "1", "-update", "1")
 
 
 def create_from_images(
@@ -44,12 +49,13 @@ def create_from_images(
     with _timed_operation() as timing:
         tmpdir = tempfile.mkdtemp(prefix="mcp_video_imgseq_")
         try:
-            if _all_even_png(validated_images):
-                extension = ".png"
-                _link_image_sequence(validated_images, tmpdir)
+            link_dir = os.path.join(tmpdir, "linked")
+            os.mkdir(link_dir)
+            if _link_even_png_sequence(validated_images, link_dir):
+                sequence_dir, extension = link_dir, ".png"
             else:
                 normalized = _normalize_images(validated_images, tmpdir)
-                extension = os.path.splitext(normalized[0])[1]
+                sequence_dir, extension = tmpdir, os.path.splitext(normalized[0])[1]
             _run_ffmpeg(
                 [
                     "-framerate",
@@ -57,7 +63,7 @@ def create_from_images(
                     "-start_number",
                     "0",
                     "-i",
-                    _sequence_pattern(tmpdir, extension),
+                    _sequence_pattern(sequence_dir, extension),
                     "-c:v",
                     "libx264",
                     *_quality_args(),
@@ -94,18 +100,57 @@ def _resolve_inputs(images: list[str] | None, list_file: str | None) -> list[str
             error_type="validation_error",
             code="empty_images",
         )
+    if len(images) > MAX_IMAGE_SEQUENCE_FRAMES:
+        raise _too_many_images()
     return list(images)
 
 
+def _too_many_images() -> MCPVideoError:
+    return MCPVideoError(
+        f"create_from_images accepts at most {MAX_IMAGE_SEQUENCE_FRAMES} images",
+        error_type="validation_error",
+        code="too_many_images",
+    )
+
+
 def _read_list_file(list_file: str) -> list[str]:
+    """Read one image path per non-blank line, bounded before any image is validated."""
     resolved = _validate_input_path(list_file)
     try:
-        with open(resolved, encoding="utf-8-sig") as handle:
-            return [line.strip() for line in handle if line.strip()]
-    except UnicodeDecodeError as exc:
-        raise InputFileError(resolved, "list file is not valid UTF-8") from exc
+        size = os.path.getsize(resolved)
     except OSError as exc:
         raise InputFileError(resolved, f"Cannot read list file: {exc}") from None
+    if size > MAX_IMAGE_SEQUENCE_LIST_BYTES:
+        raise _list_file_too_large()
+    try:
+        with open(resolved, "rb") as handle:
+            # Bounded read: a file that grows after the size check still cannot exceed the limit.
+            data = handle.read(MAX_IMAGE_SEQUENCE_LIST_BYTES + 1)
+    except OSError as exc:
+        raise InputFileError(resolved, f"Cannot read list file: {exc}") from None
+    if len(data) > MAX_IMAGE_SEQUENCE_LIST_BYTES:
+        raise _list_file_too_large()
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise InputFileError(resolved, "list file is not valid UTF-8") from exc
+    paths: list[str] = []
+    for line in io.StringIO(text, newline=None):
+        entry = line.strip()
+        if not entry:
+            continue
+        if len(paths) == MAX_IMAGE_SEQUENCE_FRAMES:
+            raise _too_many_images()
+        paths.append(entry)
+    return paths
+
+
+def _list_file_too_large() -> MCPVideoError:
+    return MCPVideoError(
+        f"list file exceeds {MAX_IMAGE_SEQUENCE_LIST_BYTES} bytes",
+        error_type="validation_error",
+        code="list_file_too_large",
+    )
 
 
 def _format_fps_for_ffmpeg(fps: float | int | str) -> str:
@@ -115,6 +160,18 @@ def _format_fps_for_ffmpeg(fps: float | int | str) -> str:
 
 def _coerce_fps(fps: float | int | str) -> tuple[float, str]:
     """Validate an FPS value and return its numeric and FFmpeg-serialized forms."""
+    value, rate = _parse_fps(fps)
+    if value > MAX_EXPORT_FRAMES_FPS:
+        raise MCPVideoError(
+            f"fps must not exceed {MAX_EXPORT_FRAMES_FPS}, got {fps}",
+            error_type="validation_error",
+            code="invalid_parameter",
+        )
+    return value, rate
+
+
+def _parse_fps(fps: float | int | str) -> tuple[float, str]:
+    """Parse a positive finite FPS (number or ``num/den``) without the range bound."""
     if isinstance(fps, bool):
         raise _invalid_fps(fps)
     if isinstance(fps, str):
@@ -138,12 +195,6 @@ def _coerce_fps(fps: float | int | str) -> tuple[float, str]:
 
     if value <= 0 or not math.isfinite(value):
         raise _invalid_fps(fps)
-    if value > MAX_EXPORT_FRAMES_FPS:
-        raise MCPVideoError(
-            f"fps must not exceed {MAX_EXPORT_FRAMES_FPS}, got {fps}",
-            error_type="validation_error",
-            code="invalid_parameter",
-        )
     return value, rate
 
 
@@ -168,14 +219,6 @@ def _format_numeric_rate(value: float) -> str:
     return repr(value)
 
 
-def _all_even_png(images: list[str]) -> bool:
-    for img in images:
-        size = _png_size(img)
-        if size is None or size[0] % 2 or size[1] % 2:
-            return False
-    return True
-
-
 def _png_size(path: str) -> tuple[int, int] | None:
     """Read PNG dimensions from the file header without invoking FFmpeg."""
     try:
@@ -191,23 +234,57 @@ def _png_size(path: str) -> tuple[int, int] | None:
     return width, height
 
 
-def _sequence_pattern(tmpdir: str, extension: str) -> str:
-    """Return the contiguous image2 pattern consumed by FFmpeg."""
-    return os.path.join(tmpdir, f"frame_%08d{extension}")
+def _sequence_pattern(sequence_dir: str, extension: str) -> str:
+    """Return the contiguous image2 pattern consumed by FFmpeg.
+
+    image2 expands ``%`` sequences anywhere in the pattern, so a literal ``%``
+    in the directory (for example in TMP) is escaped as ``%%``.
+    """
+    return os.path.join(sequence_dir.replace("%", "%%"), f"frame_%08d{extension}")
 
 
-def _link_image_sequence(images: list[str], tmpdir: str) -> None:
+def _link_even_png_sequence(images: list[str], link_dir: str) -> bool:
     """Expose even-dimension PNGs as a contiguous sequence without re-encoding.
 
-    Hard links keep the original bytes; filesystem or privilege limitations
-    fall back to a copy. Symlinks are deliberately never used.
+    The image paths arrive already resolved by ``_validate_input_path``. Each
+    one is hard-linked into ``link_dir`` first and its header is then read
+    through that link, so a path that is renamed over or replaced after the
+    check cannot change the checked file, and a path replaced by a symlink after
+    validation is refused. A hard link shares the inode, so a concurrent writer
+    rewriting the same file in place can still change its bytes; that case is
+    not defended here, exactly as for any other FFmpeg input.
+
+    Returns False, leaving the caller to re-encode the whole sequence with the
+    normalizer, as soon as an input is a symlink, is not an even-dimension PNG,
+    or cannot be hard-linked (another filesystem, missing privilege, or the
+    filesystem's per-file link limit, 1023 on NTFS, for a frame repeated that
+    often). Linking updates the inputs' link count and ctime but never their
+    contents; inputs are never copied or symlinked. ``link_dir`` must be private
+    to this call: the normalizer writes elsewhere, so it can never write through
+    a link into an input.
     """
     for index, image in enumerate(images):
-        target = os.path.join(tmpdir, f"frame_{index:08d}.png")
-        try:
-            os.link(image, target)
-        except OSError:
-            shutil.copy2(image, target)
+        target = os.path.join(link_dir, f"frame_{index:08d}.png")
+        if os.path.islink(image) or not _hard_link(image, target):
+            return False
+        if os.path.islink(target) or not os.path.isfile(target):
+            return False
+        size = _png_size(target)
+        if size is None or size[0] % 2 or size[1] % 2:
+            return False
+    return True
+
+
+def _hard_link(source: str, target: str) -> bool:
+    """Hard-link ``source`` itself, never a file a symlink points to."""
+    try:
+        if os.link in os.supports_follow_symlinks:
+            os.link(source, target, follow_symlinks=False)
+        else:
+            os.link(source, target)
+    except (OSError, NotImplementedError):
+        return False
+    return True
 
 
 def _normalize_images(images: list[str], tmpdir: str) -> list[str]:
@@ -228,6 +305,7 @@ def _normalize_images(images: list[str], tmpdir: str) -> list[str]:
                     "scale=trunc(iw/2)*2:trunc(ih/2)*2",
                     "-c:v",
                     "png",
+                    *_SINGLE_IMAGE_OUTPUT_ARGS,
                     norm_path,
                 ]
             )
@@ -241,6 +319,7 @@ def _normalize_images(images: list[str], tmpdir: str) -> list[str]:
                     "scale=trunc(iw/2)*2:trunc(ih/2)*2",
                     "-q:v",
                     "2",
+                    *_SINGLE_IMAGE_OUTPUT_ARGS,
                     norm_path,
                 ]
             )
