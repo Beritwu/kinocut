@@ -177,7 +177,7 @@ def _register_composition_commands(runner: CommandRunner) -> None:
 
 
 def _register_batch_commands(runner: CommandRunner) -> None:
-    from ..engine import compare_quality, export_frames, video_batch
+    from ..engine import video_batch
 
     def _batch(a, j):
         _out(
@@ -204,10 +204,13 @@ def _register_batch_commands(runner: CommandRunner) -> None:
         ),
     )
 
-    def _create_from_images(a, j):
-        from ..engine_images import create_from_images
-        from ..errors import MCPVideoError
 
+def _register_image_sequence_commands(runner: CommandRunner) -> None:
+    from ..engine import export_frames
+    from ..engine_images import create_from_images
+    from ..errors import MCPVideoError
+
+    def _create_from_images(a, j):
         inputs = a.inputs or None
         if inputs and a.list_file:
             raise MCPVideoError(
@@ -251,6 +254,10 @@ def _register_batch_commands(runner: CommandRunner) -> None:
         )
 
     runner.register("export-frames", _export_frames)
+
+
+def _register_quality_commands(runner: CommandRunner) -> None:
+    from ..engine import compare_quality
 
     def _compare(a, j):
         _out(
@@ -411,6 +418,8 @@ def handle_media_commands(args: Any, *, use_json: bool) -> bool:
     _register_audio_commands(runner)
     _register_composition_commands(runner)
     _register_batch_commands(runner)
+    _register_image_sequence_commands(runner)
+    _register_quality_commands(runner)
     _register_metadata_commands(runner)
     _register_template_commands(runner)
     _register_hls_commands(runner)

@@ -25,6 +25,7 @@ FFPROBE_TIMEOUT = 30  # Metadata probes should fail quickly
 QUALITY_GUARDRAILS_TIMEOUT = 120  # Quality check commands
 MAX_BATCH_SIZE = 50
 MAX_EXPORT_FRAMES_FPS = 60
+MAX_IMAGE_SEQUENCE_LIST_LINES = 10000  # Upper bound on list_file entries for create-from-images
 MAX_AI_SCENE_FRAMES = 600
 MAX_AI_UPSCALE_FRAMES = 1800
 MAX_OBJECT_MATTE_FRAMES = 3600

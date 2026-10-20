@@ -14,7 +14,7 @@ from .paths import _auto_output
 from .ffmpeg_helpers import _run_ffmpeg
 from .errors import InputFileError, MCPVideoError
 from .ffmpeg_helpers import _validate_input_path, _validate_output_path
-from .limits import MAX_EXPORT_FRAMES_FPS
+from .limits import MAX_EXPORT_FRAMES_FPS, MAX_IMAGE_SEQUENCE_LIST_LINES
 from .models import EditResult
 
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -44,10 +44,15 @@ def create_from_images(
     with _timed_operation() as timing:
         tmpdir = tempfile.mkdtemp(prefix="mcp_video_imgseq_")
         try:
-            if _all_even_png(validated_images):
+            use_fast_path = _all_even_png(validated_images) and not any(os.path.islink(img) for img in validated_images)
+            if use_fast_path:
                 extension = ".png"
-                _link_image_sequence(validated_images, tmpdir)
-            else:
+                try:
+                    _link_image_sequence(validated_images, tmpdir)
+                except OSError:
+                    # Fall back to normalizer on any link failure rather than copy2
+                    use_fast_path = False
+            if not use_fast_path:
                 normalized = _normalize_images(validated_images, tmpdir)
                 extension = os.path.splitext(normalized[0])[1]
             _run_ffmpeg(
@@ -101,11 +106,18 @@ def _read_list_file(list_file: str) -> list[str]:
     resolved = _validate_input_path(list_file)
     try:
         with open(resolved, encoding="utf-8-sig") as handle:
-            return [line.strip() for line in handle if line.strip()]
+            lines = [line.strip() for line in handle if line.strip()]
     except UnicodeDecodeError as exc:
         raise InputFileError(resolved, "list file is not valid UTF-8") from exc
     except OSError as exc:
         raise InputFileError(resolved, f"Cannot read list file: {exc}") from None
+    if len(lines) > MAX_IMAGE_SEQUENCE_LIST_LINES:
+        raise MCPVideoError(
+            f"list_file contains {len(lines)} entries, exceeding maximum of {MAX_IMAGE_SEQUENCE_LIST_LINES}",
+            error_type="validation_error",
+            code="list_file_too_large",
+        )
+    return lines
 
 
 def _format_fps_for_ffmpeg(fps: float | int | str) -> str:
@@ -199,15 +211,15 @@ def _sequence_pattern(tmpdir: str, extension: str) -> str:
 def _link_image_sequence(images: list[str], tmpdir: str) -> None:
     """Expose even-dimension PNGs as a contiguous sequence without re-encoding.
 
-    Hard links keep the original bytes; filesystem or privilege limitations
-    fall back to a copy. Symlinks are deliberately never used.
+    Hard links keep the original bytes. Symlinks are rejected by the caller;
+    any remaining OSError is raised so the caller can fall back to the
+    normalizer instead of copying.
     """
     for index, image in enumerate(images):
+        if os.path.islink(image):
+            raise OSError("symlink not allowed in fast path")
         target = os.path.join(tmpdir, f"frame_{index:08d}.png")
-        try:
-            os.link(image, target)
-        except OSError:
-            shutil.copy2(image, target)
+        os.link(image, target)
 
 
 def _normalize_images(images: list[str], tmpdir: str) -> list[str]:

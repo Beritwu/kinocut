@@ -389,8 +389,20 @@ def video_create_from_images(
         list_file: UTF-8 file with one absolute image path per line. Mutually
             exclusive with ``images``.
     """
+    if list_file is not None:
+        _validate_input_path(list_file)
     for _p in images or []:
         _validate_input_path(_p)
+    # Restore explicit FPS range check at the MCP boundary (engine also validates).
+    try:
+        numeric_fps = float(fps) if not isinstance(fps, str) or "/" not in fps else float(fps.split("/")[0]) / float(fps.split("/")[1])
+        if numeric_fps <= 0 or numeric_fps > MAX_EXPORT_FRAMES_FPS:
+            return _validation_error(
+                f"fps must be positive and not exceed {MAX_EXPORT_FRAMES_FPS}, got {fps}",
+                code="fps_out_of_range",
+            )
+    except (ValueError, ZeroDivisionError, OverflowError):
+        return _validation_error(f"fps must be a positive finite number or rational, got {fps}")
     return _result(create_from_images(images, output_path=output_path, fps=fps, list_file=list_file))
 
 
