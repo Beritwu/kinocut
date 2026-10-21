@@ -19,13 +19,15 @@ Check your setup with `uvx kinocut==1.16.2 doctor`.
 
 Claude Code and Cowork use the bundled Python project and uv lockfile to
 install Kinocut 1.16.2 and its exact core dependencies. The launcher runs
-`uv run --locked`: it fails if the project and lock disagree rather than
-resolving new dependency versions. Its environment is stored in Claude's
+`uv run --locked --exact`: it fails if the project and lock disagree rather than
+resolving new dependency versions, and removes dependencies no longer in the lock.
+Its environment is stored in Claude's
 persistent plugin data directory, outside the installed plugin files.
 
 The first launch downloads the locked dependencies from PyPI. Later launches
 reuse that environment. This does not bundle FFmpeg or optional AI packages.
-Other MCP hosts retain the pinned `uvx kinocut==1.16.2` launcher below.
+Cursor, MiniMax, Kimi and Agent Plugins hosts retain the pinned
+`uvx kinocut==1.16.2` launcher below.
 
 Claude's directory still requires manual review for registry package launchers,
 including locked ones. The lock improves reproducibility; it does not guarantee

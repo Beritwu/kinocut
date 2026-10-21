@@ -455,6 +455,8 @@ def test_vendor_plugin_bundle_versions_and_pinned_runtime_are_consistent() -> No
     assert entry["name"] == "kinocut" and ROOT / entry["source"] == plugin
     cursor = json.loads((plugin / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
     assert (plugin / cursor["mcpServers"]).is_file()
+    cursor_server = json.loads((plugin / cursor["mcpServers"]).read_text())["mcpServers"]["kinocut"]
+    assert cursor_server == {"type": "stdio", "command": "uvx", "args": [f"kinocut=={version}"]}
     assert {p.parent.name for p in (plugin / cursor["skills"]).glob("*/SKILL.md")} == {"kinocut", "kinocut-repurpose"}
     for rel in ("mcp.json", "kinocut.mcp.json", "kimi.plugin.json"):
         server = json.loads((plugin / rel).read_text(encoding="utf-8"))["mcpServers"]["kinocut"]
@@ -478,6 +480,7 @@ def test_claude_plugin_launch_consumes_a_complete_public_registry_lock() -> None
     assert server["args"] == [
         "run",
         "--locked",
+        "--exact",
         "--no-dev",
         "--no-config",
         "--no-env-file",

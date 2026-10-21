@@ -5,6 +5,7 @@
       "args": [
         "run",
         "--locked",
+        "--exact",
         "--no-dev",
         "--no-config",
         "--no-env-file",
