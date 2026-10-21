@@ -17,20 +17,23 @@ Check your setup with `uvx kinocut==1.16.2 doctor`.
 
 ## Claude installation
 
-Claude Code and Cowork use the bundled Python project and uv lockfile to
-install Kinocut 1.16.2 and its exact core dependencies. The launcher runs
-`uv run --locked --exact`: it fails if the project and lock disagree rather than
-resolving new dependency versions, and removes dependencies no longer in the lock.
-Its environment is stored in Claude's
-persistent plugin data directory, outside the installed plugin files.
+Claude Code and Cowork run the pinned `uvx kinocut==1.16.2` launcher.
+The bundled Python project and `uv.lock` record exact core dependency versions,
+public PyPI sources and artifact hashes for directory review. The directory's
+locked-launcher check requires this plain pinned command, without environment
+overrides or dependency-file options.
 
-The first launch downloads the locked dependencies from PyPI. Later launches
+uvx pins Kinocut itself and resolves its dependencies when creating a tool
+environment; it does not consume the bundled uv.lock. That lock is an audit
+snapshot. uv caches the environment outside the installed plugin files.
+
+The first launch downloads the dependencies from PyPI. Later launches
 reuse that environment. This does not bundle FFmpeg or optional AI packages.
 Cursor, MiniMax, Kimi and Agent Plugins hosts retain the pinned
 `uvx kinocut==1.16.2` launcher below.
 
 Claude's directory still requires manual review for registry package launchers,
-including locked ones. The lock improves reproducibility; it does not guarantee
+including locked ones. The lock documents a dependency snapshot; it does not guarantee
 approval or a Verified badge. The directory-only icon, documentation, support,
 privacy and terms fields are intentional listing metadata.
 
@@ -50,8 +53,7 @@ privacy and terms fields are intentional listing metadata.
 
 ## Manual setup for any MCP client
 
-The Claude layout requires a host that expands `CLAUDE_PLUGIN_ROOT` and
-`CLAUDE_PLUGIN_DATA`. Other clients can use the pinned manual configuration:
+Clients can also use the pinned configuration directly:
 
 ```json
 {

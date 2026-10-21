@@ -467,7 +467,7 @@ def test_vendor_plugin_bundle_versions_and_pinned_runtime_are_consistent() -> No
     assert gemini["mcpServers"]["kinocut"] == {"command": "uvx", "args": [f"kinocut=={version}"]}
 
 
-def test_claude_plugin_launch_consumes_a_complete_public_registry_lock() -> None:
+def test_claude_plugin_plain_pinned_launcher_has_a_complete_public_registry_lock() -> None:
     plugin = ROOT / "plugins" / "kinocut"
     project = _toml(plugin / "pyproject.toml")["project"]
     lock = _toml(plugin / "uv.lock")
@@ -476,19 +476,7 @@ def test_claude_plugin_launch_consumes_a_complete_public_registry_lock() -> None
     assert project["dependencies"] == [f"kinocut=={KINOCUT_VERSION}"]
     assert project["requires-python"] == lock["requires-python"] == ">=3.11"
     assert project["version"] == json.loads((plugin / ".claude-plugin/plugin.json").read_text())["version"]
-    assert server["command"] == "uv"
-    assert server["args"] == [
-        "run",
-        "--locked",
-        "--exact",
-        "--no-dev",
-        "--no-config",
-        "--no-env-file",
-        "--project",
-        "${CLAUDE_PLUGIN_ROOT}",
-        "kinocut",
-    ]
-    assert server["env"] == {"UV_PROJECT_ENVIRONMENT": "${CLAUDE_PLUGIN_DATA}/venv"}
+    assert server == {"command": "uvx", "args": [f"kinocut=={KINOCUT_VERSION}"]}
     packages = {package["name"]: package for package in lock["package"]}
     assert packages["kinocut"]["version"] == KINOCUT_VERSION
     assert packages[project["name"]]["source"] == {"virtual": "."}
