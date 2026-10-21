@@ -3,11 +3,6 @@
     "kinocut": {
       "command": "uvx",
       "args": [
-        "--isolated",
-        "--no-config",
-        "--no-env-file",
-        "--with-requirements",
-        "${CLAUDE_PLUGIN_ROOT}/runtime-requirements.txt",
         "kinocut==1.16.2"
       ]
     }

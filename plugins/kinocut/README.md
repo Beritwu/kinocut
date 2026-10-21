@@ -17,22 +17,23 @@ Check your setup with `uvx kinocut==1.16.2 doctor`.
 
 ## Claude installation
 
-Claude Code and Cowork run the pinned `uvx kinocut==1.16.2` launcher with
-`--with-requirements ${CLAUDE_PLUGIN_ROOT}/runtime-requirements.txt`.
-That file exports the exact core dependency versions and platform markers from
-the bundled `uv.lock`. The lock records public PyPI sources and artifact hashes
-for directory review; the requirements export constrains runtime versions.
-uvx does not enforce those recorded artifact hashes. Its isolated environment
-is cached by uv outside the installed plugin files; no project environment or
-package-manager environment variables are set by the plugin.
+Claude Code and Cowork run the pinned `uvx kinocut==1.16.2` launcher.
+The bundled Python project and `uv.lock` record exact core dependency versions,
+public PyPI sources and artifact hashes for directory review. The directory's
+locked-launcher check requires this plain pinned command, without environment
+overrides or dependency-file options.
 
-The first launch downloads the locked dependencies from PyPI. Later launches
+uvx pins Kinocut itself and resolves its dependencies when creating a tool
+environment; it does not consume the bundled uv.lock. That lock is an audit
+snapshot. uv caches the environment outside the installed plugin files.
+
+The first launch downloads the dependencies from PyPI. Later launches
 reuse that environment. This does not bundle FFmpeg or optional AI packages.
 Cursor, MiniMax, Kimi and Agent Plugins hosts retain the pinned
 `uvx kinocut==1.16.2` launcher below.
 
 Claude's directory still requires manual review for registry package launchers,
-including locked ones. The lock improves reproducibility; it does not guarantee
+including locked ones. The lock documents a dependency snapshot; it does not guarantee
 approval or a Verified badge. The directory-only icon, documentation, support,
 privacy and terms fields are intentional listing metadata.
 
@@ -40,7 +41,7 @@ privacy and terms fields are intentional listing metadata.
 
 | Agent | Files |
 | --- | --- |
-| Claude Code / Cowork | `.claude-plugin/plugin.json`, `.mcp.json`, `pyproject.toml`, `uv.lock`, `runtime-requirements.txt`, `skills/` |
+| Claude Code / Cowork | `.claude-plugin/plugin.json`, `.mcp.json`, `pyproject.toml`, `uv.lock`, `skills/` |
 | Hermes Agent and other Agent Plugins v1 hosts | `plugin.json`, `mcp.json`, `skills/` |
 | OpenClaw / ClawHub | Claude Code layout above, bundled icon |
 | Grok Build | Claude Code layout above |
@@ -52,8 +53,7 @@ privacy and terms fields are intentional listing metadata.
 
 ## Manual setup for any MCP client
 
-The Claude layout requires a host that expands `CLAUDE_PLUGIN_ROOT`.
-Other clients can use the pinned manual configuration:
+Clients can also use the pinned configuration directly:
 
 ```json
 {
