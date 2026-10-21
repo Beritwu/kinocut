@@ -435,6 +435,23 @@ def test_integration_smoke_adds_nonpublishing_exact_head_onboarding_job() -> Non
         assert "python -m venv .venv" in smoke
 
 
+def test_vendor_plugin_manifests_track_the_package_version() -> None:
+    """Every vendor plugin manifest launches the same pinned kinocut release."""
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    plugin = ROOT / "plugins" / "kinocut"
+    for rel in (
+        "plugin.json",
+        ".claude-plugin/plugin.json",
+        ".minimax-plugin/plugin.json",
+        "kimi.plugin.json",
+    ):
+        assert json.loads((plugin / rel).read_text(encoding="utf-8"))["version"] == version, rel
+    for rel in ("mcp.json", ".mcp.json", "kinocut.mcp.json", "kimi.plugin.json"):
+        server = json.loads((plugin / rel).read_text(encoding="utf-8"))["mcpServers"]["kinocut"]
+        assert server["command"] == "uvx" and server["args"] == [f"kinocut=={version}"], rel
+    assert f'"kinocut=={version}"' in (plugin / "opencode-plugin" / "README.md").read_text(encoding="utf-8")
+
+
 def test_registry_metadata_is_local_package_only() -> None:
     """KinoCut is distributed as a local stdio package, never as a hosted service."""
     server = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
