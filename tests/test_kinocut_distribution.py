@@ -455,9 +455,7 @@ def test_vendor_plugin_bundle_versions_and_pinned_runtime_are_consistent() -> No
     assert entry["name"] == "kinocut" and ROOT / entry["source"] == plugin
     cursor = json.loads((plugin / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
     assert (plugin / cursor["mcpServers"]).is_file()
-    assert {p.parent.name for p in (plugin / cursor["skills"]).glob("*/SKILL.md")} == {
-        "kinocut", "kinocut-repurpose"
-    }
+    assert {p.parent.name for p in (plugin / cursor["skills"]).glob("*/SKILL.md")} == {"kinocut", "kinocut-repurpose"}
     for rel in ("mcp.json", ".mcp.json", "kinocut.mcp.json", "kimi.plugin.json"):
         server = json.loads((plugin / rel).read_text(encoding="utf-8"))["mcpServers"]["kinocut"]
         assert server["command"] == "uvx" and server["args"] == [f"kinocut=={version}"], rel
