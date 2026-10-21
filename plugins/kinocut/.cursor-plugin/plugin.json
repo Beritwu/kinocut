@@ -1,0 +1,14 @@
+{
+  "name": "kinocut",
+  "version": "1.16.3",
+  "description": "Guarded local video editing with FFmpeg, an MCP server, and two workflow skills.",
+  "author": {
+    "name": "Kyanite Labs"
+  },
+  "homepage": "https://kinocut.dev/",
+  "repository": "https://github.com/KyaniteLabs/kinocut",
+  "license": "Apache-2.0",
+  "logo": "icon.png",
+  "skills": "./skills/",
+  "mcpServers": "./mcp.json"
+}

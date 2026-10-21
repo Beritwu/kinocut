@@ -435,17 +435,27 @@ def test_integration_smoke_adds_nonpublishing_exact_head_onboarding_job() -> Non
         assert "python -m venv .venv" in smoke
 
 
-def test_vendor_plugin_manifests_track_the_package_version() -> None:
-    """Every vendor plugin manifest launches the same pinned kinocut release."""
+def test_vendor_plugin_bundle_versions_and_pinned_runtime_are_consistent() -> None:
+    """The plugin bundle can advance without republishing its pinned runtime."""
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
     plugin = ROOT / "plugins" / "kinocut"
+    plugin_version = json.loads((plugin / "plugin.json").read_text(encoding="utf-8"))["version"]
+    assert re.fullmatch(r"\d+\.\d+\.\d+", plugin_version)
     for rel in (
         "plugin.json",
         ".claude-plugin/plugin.json",
+        ".cursor-plugin/plugin.json",
         ".minimax-plugin/plugin.json",
         "kimi.plugin.json",
     ):
-        assert json.loads((plugin / rel).read_text(encoding="utf-8"))["version"] == version, rel
+        assert json.loads((plugin / rel).read_text(encoding="utf-8"))["version"] == plugin_version, rel
+    marketplace = json.loads((ROOT / ".cursor-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    assert len(marketplace["plugins"]) == 1
+    entry = marketplace["plugins"][0]
+    assert entry["name"] == "kinocut" and ROOT / entry["source"] == plugin
+    cursor = json.loads((plugin / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert (plugin / cursor["mcpServers"]).is_file()
+    assert {p.parent.name for p in (plugin / cursor["skills"]).glob("*/SKILL.md")} == {"kinocut", "kinocut-repurpose"}
     for rel in ("mcp.json", ".mcp.json", "kinocut.mcp.json", "kimi.plugin.json"):
         server = json.loads((plugin / rel).read_text(encoding="utf-8"))["mcpServers"]["kinocut"]
         assert server["command"] == "uvx" and server["args"] == [f"kinocut=={version}"], rel
