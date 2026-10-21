@@ -455,14 +455,55 @@ def test_vendor_plugin_bundle_versions_and_pinned_runtime_are_consistent() -> No
     assert entry["name"] == "kinocut" and ROOT / entry["source"] == plugin
     cursor = json.loads((plugin / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
     assert (plugin / cursor["mcpServers"]).is_file()
+    cursor_server = json.loads((plugin / cursor["mcpServers"]).read_text())["mcpServers"]["kinocut"]
+    assert cursor_server == {"type": "stdio", "command": "uvx", "args": [f"kinocut=={version}"]}
     assert {p.parent.name for p in (plugin / cursor["skills"]).glob("*/SKILL.md")} == {"kinocut", "kinocut-repurpose"}
-    for rel in ("mcp.json", ".mcp.json", "kinocut.mcp.json", "kimi.plugin.json"):
+    for rel in ("mcp.json", "kinocut.mcp.json", "kimi.plugin.json"):
         server = json.loads((plugin / rel).read_text(encoding="utf-8"))["mcpServers"]["kinocut"]
         assert server["command"] == "uvx" and server["args"] == [f"kinocut=={version}"], rel
     assert f'"kinocut=={version}"' in (plugin / "opencode-plugin" / "README.md").read_text(encoding="utf-8")
     gemini = json.loads((ROOT / "gemini-extension.json").read_text(encoding="utf-8"))
     assert gemini["version"] == version
     assert gemini["mcpServers"]["kinocut"] == {"command": "uvx", "args": [f"kinocut=={version}"]}
+
+
+def test_claude_plugin_launch_consumes_a_complete_public_registry_lock() -> None:
+    plugin = ROOT / "plugins" / "kinocut"
+    project = _toml(plugin / "pyproject.toml")["project"]
+    lock = _toml(plugin / "uv.lock")
+    server = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"]["kinocut"]
+
+    assert project["dependencies"] == [f"kinocut=={KINOCUT_VERSION}"]
+    assert project["requires-python"] == lock["requires-python"] == ">=3.11"
+    assert project["version"] == json.loads((plugin / ".claude-plugin/plugin.json").read_text())["version"]
+    assert server["command"] == "uv"
+    assert server["args"] == [
+        "run",
+        "--locked",
+        "--exact",
+        "--no-dev",
+        "--no-config",
+        "--no-env-file",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "kinocut",
+    ]
+    assert server["env"] == {"UV_PROJECT_ENVIRONMENT": "${CLAUDE_PLUGIN_DATA}/venv"}
+    packages = {package["name"]: package for package in lock["package"]}
+    assert packages["kinocut"]["version"] == KINOCUT_VERSION
+    assert packages[project["name"]]["source"] == {"virtual": "."}
+    for package in lock["package"]:
+        if package["name"] == project["name"]:
+            continue
+        assert package["source"] == {"registry": "https://pypi.org/simple"}
+        assert re.fullmatch(r"\d[^\s]*", package["version"]), package["name"]
+        artifacts = package.get("wheels", []) + ([package["sdist"]] if "sdist" in package else [])
+        assert artifacts, package["name"]
+        for artifact in artifacts:
+            assert artifact["url"].startswith("https://files.pythonhosted.org/")
+            assert re.fullmatch(r"sha256:[0-9a-f]{64}", artifact["hash"])
+        assert all(dependency["name"] in packages for dependency in package.get("dependencies", []))
+    assert (plugin / "uv.lock").stat().st_size < 256 * 1024
 
 
 def test_registry_metadata_is_local_package_only() -> None:
