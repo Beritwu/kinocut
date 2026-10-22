@@ -19,8 +19,8 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-KINOCUT_VERSION = "1.16.1"
-SHIM_VERSION = "1.6.16"
+KINOCUT_VERSION = "1.16.2"
+SHIM_VERSION = "1.6.17"
 
 
 def _toml(path: Path) -> dict:
@@ -171,7 +171,7 @@ def test_npm_package_is_a_thin_uvx_bootstrap_not_a_second_runtime() -> None:
 def test_registry_metadata_uses_the_new_immutable_identity() -> None:
     server = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
 
-    assert server["name"] == "io.github.KyaniteLabs/kinocut"
+    assert server["name"] == "tech.kyanitelabs/kinocut"
     assert server["title"] == "Kinocut"
     assert server["version"] == KINOCUT_VERSION
     assert len(server["description"]) <= 100
@@ -433,3 +433,72 @@ def test_integration_smoke_adds_nonpublishing_exact_head_onboarding_job() -> Non
         smoke = _workflow_job(workflow, existing)
         assert "runs-on: ubuntu-24.04" in smoke
         assert "python -m venv .venv" in smoke
+
+
+def test_vendor_plugin_bundle_versions_and_pinned_runtime_are_consistent() -> None:
+    """The plugin bundle can advance without republishing its pinned runtime."""
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    plugin = ROOT / "plugins" / "kinocut"
+    plugin_version = json.loads((plugin / "plugin.json").read_text(encoding="utf-8"))["version"]
+    assert re.fullmatch(r"\d+\.\d+\.\d+", plugin_version)
+    for rel in (
+        "plugin.json",
+        ".claude-plugin/plugin.json",
+        ".cursor-plugin/plugin.json",
+        ".minimax-plugin/plugin.json",
+        "kimi.plugin.json",
+    ):
+        assert json.loads((plugin / rel).read_text(encoding="utf-8"))["version"] == plugin_version, rel
+    marketplace = json.loads((ROOT / ".cursor-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    assert len(marketplace["plugins"]) == 1
+    entry = marketplace["plugins"][0]
+    assert entry["name"] == "kinocut" and ROOT / entry["source"] == plugin
+    cursor = json.loads((plugin / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert (plugin / cursor["mcpServers"]).is_file()
+    cursor_server = json.loads((plugin / cursor["mcpServers"]).read_text())["mcpServers"]["kinocut"]
+    assert cursor_server == {"type": "stdio", "command": "uvx", "args": [f"kinocut=={version}"]}
+    assert {p.parent.name for p in (plugin / cursor["skills"]).glob("*/SKILL.md")} == {"kinocut", "kinocut-repurpose"}
+    for rel in ("mcp.json", "kinocut.mcp.json", "kimi.plugin.json"):
+        server = json.loads((plugin / rel).read_text(encoding="utf-8"))["mcpServers"]["kinocut"]
+        assert server["command"] == "uvx" and server["args"] == [f"kinocut=={version}"], rel
+    assert f'"kinocut=={version}"' in (plugin / "opencode-plugin" / "README.md").read_text(encoding="utf-8")
+    gemini = json.loads((ROOT / "gemini-extension.json").read_text(encoding="utf-8"))
+    assert gemini["version"] == version
+    assert gemini["mcpServers"]["kinocut"] == {"command": "uvx", "args": [f"kinocut=={version}"]}
+
+
+def test_claude_plugin_plain_pinned_launcher_has_a_complete_public_registry_lock() -> None:
+    plugin = ROOT / "plugins" / "kinocut"
+    project = _toml(plugin / "pyproject.toml")["project"]
+    lock = _toml(plugin / "uv.lock")
+    server = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"]["kinocut"]
+
+    assert project["dependencies"] == [f"kinocut=={KINOCUT_VERSION}"]
+    assert project["requires-python"] == lock["requires-python"] == ">=3.11"
+    assert project["version"] == json.loads((plugin / ".claude-plugin/plugin.json").read_text())["version"]
+    assert server == {"command": "uvx", "args": [f"kinocut=={KINOCUT_VERSION}"]}
+    packages = {package["name"]: package for package in lock["package"]}
+    assert packages["kinocut"]["version"] == KINOCUT_VERSION
+    assert packages[project["name"]]["source"] == {"virtual": "."}
+    for package in lock["package"]:
+        if package["name"] == project["name"]:
+            continue
+        assert package["source"] == {"registry": "https://pypi.org/simple"}
+        assert re.fullmatch(r"\d[^\s]*", package["version"]), package["name"]
+        artifacts = package.get("wheels", []) + ([package["sdist"]] if "sdist" in package else [])
+        assert artifacts, package["name"]
+        for artifact in artifacts:
+            assert artifact["url"].startswith("https://files.pythonhosted.org/")
+            assert re.fullmatch(r"sha256:[0-9a-f]{64}", artifact["hash"])
+        assert all(dependency["name"] in packages for dependency in package.get("dependencies", []))
+    assert (plugin / "uv.lock").stat().st_size < 256 * 1024
+
+
+def test_registry_metadata_is_local_package_only() -> None:
+    """KinoCut is distributed as a local stdio package, never as a hosted service."""
+    server = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
+    assert "remotes" not in server, "server.json must not advertise a hosted remote"
+    packages = server.get("packages") or []
+    assert [(p.get("registryType"), p.get("identifier"), p.get("transport", {}).get("type")) for p in packages] == [
+        ("pypi", "kinocut", "stdio")
+    ]

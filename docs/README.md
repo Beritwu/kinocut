@@ -14,7 +14,7 @@ artifacts keep the names, versions, commands, and paths they actually verified.
 - [MCP tools](TOOLS.md) - public tool categories and contracts.
 - [Python client](PYTHON_CLIENT.md) - canonical `from kinocut import Client` usage.
 - [360 dual-cam assembly](360_ASSEMBLY.md) - stitched equirect MP4 → propose/approve/render (published 1.14.0; no new MCP name).
-- [Product / object matte](PRODUCT_MATTE.md) - product/catalog cutouts on existing `hyperframes-remove-background --model birefnet-general` (published in 1.16.1 as the optional `kinocut[object-matte]` extra; first shipped in 1.15.1). No new MCP name. Example: [examples/product-matte/](../examples/product-matte/).
+- [Product / object matte](PRODUCT_MATTE.md) - product/catalog cutouts on existing `hyperframes-remove-background --model birefnet-general` (published in 1.16.2 as the optional `kinocut[object-matte]` extra; first shipped in 1.15.1). No new MCP name. Example: [examples/product-matte/](../examples/product-matte/).
 - [Stream shorts](STREAM_SHORTS.md) - saved-plan review, render, and package stages (local-only).
 - [Agent workflows](WORKFLOWS.md) - job specs, render receipts, resume, and cleanup.
 - [Video rescue](RESCUE.md) - review-first repair pipeline.
@@ -33,7 +33,7 @@ artifacts keep the names, versions, commands, and paths they actually verified.
 - [AI-video review and salvage](AI_VIDEO_REVIEW_AND_SALVAGE.md) - evidence-first Wave 3 operating guide.
 - [Kinocut now](status/NOW.md) - published vs tip, human residuals, site honesty leftover.
 - [2026-09-30 ops disposition](status/2026-09-30-ops-disposition.md) - current gate applicability and owner-evidence boundaries.
-- [2026-08-19 ops closeout](status/2026-08-19-ops-closeout.md) - dual-host, CI, Cloudflare DNS, parked owner words.
+- 2026-08-19 ops closeout (removed 2026-10-11) - dual-host, CI, Cloudflare DNS, parked owner words.
 - [Post-campaign tip status](status/2026-07-27-post-campaign-tip-status.md) - historical 1.11.1-versus-development-tip snapshot (superseded by NOW.md).
 - [Post-1.10 program status](status/2026-07-24-post-1-10-program-status.md) - historical published-release and remaining-program boundary recorded after 1.11.1.
 - [Post-1.8 program status](status/2026-07-14-post-1.8-program-status.md) - historical published-release boundary (superseded for planning).
@@ -82,7 +82,7 @@ artifacts keep the names, versions, commands, and paths they actually verified.
 - Date-prefixed audits, handoffs, plans, and `docs/status/` entries are snapshots,
   not current install or source-layout instructions, unless they explicitly identify
   themselves as the current release record. For current release and program state,
-  use [NOW.md](status/NOW.md) and the [2026-08-19 ops closeout](status/2026-08-19-ops-closeout.md);
+  use [NOW.md](status/NOW.md); the 2026-08-19 ops closeout was removed 2026-10-11;
 - [Performance committee receipts](status/perf-committee/README.md) — inspect-only
   2026-08-13 reports. Do not re-implement the 360 split; `render_window_single_pass`
   already shipped in 1.14.0.

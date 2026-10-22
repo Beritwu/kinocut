@@ -22,7 +22,7 @@ where noted. Residual portfolio authority:
 | PyPI downloads (last day) | **608** | pypistats / pypi.org API |
 | PyPI downloads (last week) | **6,715** | same |
 | PyPI downloads (last month) | **23,034** | same |
-| Published package | **1.16.1** | PyPI (published/verified 2026-10-05); historical download/star observations above remain dated |
+| Published package | **1.16.2** | PyPI (published/verified 2026-10-21); historical download/star observations above remain dated |
 
 Downloads are not a unique-user census, but stars + forks + multi‑k weekly installs
 make “recruit first 10 users” an obsolete product gate. Do **not** re-open #92 as
@@ -65,7 +65,7 @@ starving apt/curl) is closed: runner home is VM-local
 `/mnt/lima-colima/forgejo-runner`; `claims-live.yml` runs on `heavy`.
 See [CI_RUNNER_TOPOLOGY.md](CI_RUNNER_TOPOLOGY.md) (**Agent land recipe**: idle
 restart → ~90s warm → empty-commit retrigger) and
-[ops closeout](status/2026-08-19-ops-closeout.md).
+ops closeout 2026-08-19 (removed 2026-10-11; see git history).
 
 The Actions API still does not expose step-level logs. If a future job is
 red without statuses, read
@@ -73,16 +73,16 @@ red without statuses, read
 Do not raise `timeout-minutes` to paper over a missing `lint-checkout`.
 
 PR **#405** retrigger (`16a083e`, run 929): lint **Failing after 1m21s**, no
-`lint-checkout`; tests skipped. Operator hypothesis “nucbox is busy” is a
+`lint-checkout`; tests skipped. Operator hypothesis “gpu-host is busy” is a
 **busy-host** guess. Live runner list for this repo is only `colima-ci-runner`
 (id=15, labels `light`+`heavy`+`arm64-heavy`, status idle at the 2026-08-19
-probe). `nucbox-ci` is not registered here. Same ~80s signature as Colima
+probe). `gpu-host-ci` is not registered here. Same ~80s signature as Colima
 capacity-2 / virtiofs starvation. Do not merge #405 red. See
 [CI_RUNNER_TOPOLOGY.md](CI_RUNNER_TOPOLOGY.md).
 
 ## Product site
 
-Current maintenance publication (2026-10-05): PyPI/npm and GitHub release report **1.16.1**; compatibility shim **1.6.16** pins it. The initial publication gate read MCP Registry 1.16.1; later reads timed out. Website 1.16.1 source is prepared, not deployed. The dated checkpoint below remains historical.
+Current maintenance publication (2026-10-21): PyPI/npm, GitHub release and the official MCP Registry report **1.16.2**; compatibility shim **1.6.17** pins it. Previous checkpoint (2026-10-05): PyPI/npm and GitHub release report **1.16.1**; compatibility shim **1.6.16** pins it. The initial publication gate read MCP Registry 1.16.1; later reads timed out. Website 1.16.1 source is prepared, not deployed. The dated checkpoint below remains historical.
 
 Official package/release providers report 1.16.0 (verified 2026-10-02). On 2026-10-05, the live [product site](https://kinocut.dev/) showed 1.16.0, 203 MCP tools and 177 CLI commands; installation and benchmark pages responded successfully and the showcase download was available. Website and product-repository social images matched the approved exports. The earlier DNS and social-upload blockers are superseded. Final owner acceptance, fleet rollout and human/model acceptance remain separate. Forgejo issue tracking is excluded; the website repository retains its separately recorded Forgejo source authority.
 

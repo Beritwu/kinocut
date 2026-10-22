@@ -29,6 +29,14 @@ jobs:
           python-version: '3.14'
       - name: Check forbidden tracked artifacts
         run: python .github/scripts/check-forbidden-artifacts.py
+      - name: Require the registry domain key before publishing anything
+        env:
+          MCP_REGISTRY_DNS_PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_DNS_PRIVATE_KEY }}
+        run: |
+          if [ -z "$MCP_REGISTRY_DNS_PRIVATE_KEY" ]; then
+            echo "::error::MCP_REGISTRY_DNS_PRIVATE_KEY is not set; tech.kyanitelabs/kinocut cannot be published."
+            exit 1
+          fi
 
   build:
     name: Build release artifacts
@@ -47,7 +55,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.14'
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '24'
       - name: Create venv
@@ -229,12 +237,12 @@ jobs:
             --evidence-class synthetic_fixture \
             --generate-synthetic-source
       - name: Upload Python artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: dist
           path: release-dist/
       - name: Upload npm artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: npm-dist
           path: npm-dist/
@@ -250,7 +258,7 @@ jobs:
       id-token: write
     steps:
       - name: Download Python artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: dist
           path: dist/
@@ -270,11 +278,11 @@ jobs:
       id-token: write
     steps:
       - name: Download npm artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: npm-dist
           path: npm-dist/
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '24'
       - name: Install trusted-publishing npm client
@@ -302,7 +310,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '24'
       - name: Build npm package
@@ -357,9 +365,17 @@ jobs:
           echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum -c -
           tar xzf mcp-publisher.tar.gz mcp-publisher
           ./mcp-publisher --help
-      - name: Authenticate to MCP Registry
-        run: ./mcp-publisher login github-oidc
+      - name: Require the registry domain key
+        env:
+          MCP_REGISTRY_DNS_PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_DNS_PRIVATE_KEY }}
+        run: |
+          if [ -z "$MCP_REGISTRY_DNS_PRIVATE_KEY" ]; then
+            echo "::error::MCP_REGISTRY_DNS_PRIVATE_KEY is not set; tech.kyanitelabs/kinocut cannot be published."
+            exit 1
+          fi
       - name: Publish server metadata
+        env:
+          MCP_REGISTRY_DNS_PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_DNS_PRIVATE_KEY }}
         # Recovery-safe: the registry rejects duplicate versions with a hard 400
         # ("cannot publish duplicate version"), so check the published-version
         # list first and skip entries this release already shipped.
@@ -385,7 +401,14 @@ jobs:
               fi
             fi
           }
+          # tech.kyanitelabs/* is a domain namespace; io.github.KyaniteLabs/* uses GitHub OIDC.
+          # Domain proof is served at https://kyanitelabs.tech/.well-known/mcp-registry-auth (Cloudflare Worker route).
+          # The secret holds a 32-byte Ed25519 seed as hex; drop anything else an openssl text dump may have added.
+          registry_key="$(printf '%s' "$MCP_REGISTRY_DNS_PRIVATE_KEY" | tr -cd '0-9a-fA-F' | head -c 64)"
+          if [ "${#registry_key}" -ne 64 ]; then echo "::error::MCP_REGISTRY_DNS_PRIVATE_KEY is not a 64-hex Ed25519 seed"; exit 1; fi
+          ./mcp-publisher login http --domain kyanitelabs.tech --private-key "$registry_key"
           publish_if_new server.json
+          ./mcp-publisher login github-oidc
           publish_if_new compat/mcp-video-shim/server.json
       - name: Verify prospective public claims after publication
         run: |

@@ -1,6 +1,6 @@
 ---
 name: kinocut-repurpose
-description: Use the current Kinocut tools to turn one local video path into a short platform-ready clip package with manifests, review artifacts, and human approval gates.
+description: Use when turning one local video into a platform-ready short. Kinocut builds clip packages with manifests, review artifacts, and human approval gates.
 ---
 
 # Kinocut Repurpose
