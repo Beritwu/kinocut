@@ -5,11 +5,10 @@ from __future__ import annotations
 from importlib import resources
 from pathlib import Path
 import re
-import shutil
 from typing import Any
 
 from .errors import MCPVideoError
-from .ffmpeg_helpers import _validate_output_path
+from .ffmpeg_helpers import _atomic_artifact, _open_staged_writer, _validate_output_path
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _BLOCK_RE = re.compile(r"^##\s+((?:STYLE|NEG)_[A-Z0-9_]+)(?:\s+\(([^()]+)\))?\s*$")
@@ -51,13 +50,15 @@ def _template_path(name: str) -> Path:
 
 
 def _copy_template(name: str, destination: Path) -> None:
-    shutil.copyfile(_template_path(name), destination)
+    with _atomic_artifact(str(destination)) as staged, _open_staged_writer(staged) as writer:
+        writer.write(_template_path(name).read_bytes())
 
 
 def create_video_project(slug: str, output_dir: str | None = None) -> dict[str, Any]:
     """Scaffold a PUSHING CREATION-compatible video project."""
     slug = _validate_slug(slug)
-    project = _resolve_dir(output_dir) / "projects" / slug
+    requested = _resolve_dir(output_dir) / "projects" / slug
+    project = Path(_validate_output_path(str(requested))).resolve()
     if project.exists():
         raise _creation_error(f"Project already exists: {project}", code="project_exists")
 
@@ -65,7 +66,8 @@ def create_video_project(slug: str, output_dir: str | None = None) -> dict[str, 
     refs.mkdir(parents=True)
     _copy_template("style.md", project / "style.md")
     _copy_template("storyboard.md", project / "storyboard.md")
-    (refs / ".gitkeep").write_text("")
+    with _atomic_artifact(str(refs / ".gitkeep")) as staged, _open_staged_writer(staged):
+        pass
 
     return {
         "project_path": str(project),

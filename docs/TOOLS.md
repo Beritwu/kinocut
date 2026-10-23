@@ -15,6 +15,27 @@ homes remain protected even with consent. Source/output alias guards still apply
 Prefer a new output path. Python client calls accept the same `overwrite=True`
 keyword; the CLI uses `kino --overwrite COMMAND ...`.
 
+Use an output directory with one writer at a time. The overwrite checks do not
+guarantee preservation against another process replacing a target between
+validation and publication. Atomic receipt updates retain complete old-or-new
+JSON; do not run competing jobs against the same output or receipt paths.
+
+### Upgrading existing jobs
+
+Finish existing workers with their original runtime before switching versions.
+Durable render receipts and shorts plans now retain inode ownership evidence in
+hidden `.<filename>.ownership` directories. Legacy jobs without this evidence
+cannot be resumed or updated by the new runtime; start a new job instead of
+adopting the old receipt. Preserve ownership directories with their jobs, and
+verify restart after any backup or move: copying visible JSON alone, or a copy
+that changes hard-link relationships, loses the proof. Historical receipt inodes
+remain retained; this release does not prune them automatically.
+
+Publication and durable ownership require filesystem hard-link support. Use a
+supported local filesystem and verify it before a long job. Network, cloud-sync
+and removable filesystems are not assumed compatible; do not bypass a failed
+publication check with a direct file copy.
+
 ## Project-backed Inspection (3 tools)
 
 These operations share one adapter with the Python client and CLI. Only ingest accepts a

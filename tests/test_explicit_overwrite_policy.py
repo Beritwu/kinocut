@@ -87,6 +87,20 @@ def test_target_created_during_publication_survives(tmp_path, monkeypatch):
     assert not list(tmp_path.glob(".kinocut_tmp_*"))
 
 
+def test_policy_wrapped_mcp_tool_retains_request_context():
+    from typing import get_type_hints
+
+    from mcp.server.fastmcp.utilities.context_injection import find_context_parameter
+
+    from kinocut.server import mcp
+
+    tool = mcp._tool_manager.get_tool("video_convert")
+    assert "ctx" in get_type_hints(tool.fn)
+    assert find_context_parameter(tool.fn) == "ctx"
+    assert tool.context_kwarg == "ctx"
+    assert "ctx" not in tool.parameters["properties"]
+
+
 def test_mcp_schema_accepts_only_explicit_boolean_and_scopes_consent(sample_video, tmp_path):
     from kinocut.server import mcp
 

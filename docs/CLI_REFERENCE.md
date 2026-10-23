@@ -12,6 +12,10 @@ Pre-existing non-media files (including JSON, text, CSV and TypeScript) remain
 protected; only files created in the same job can be replaced with consent.
 Agent configuration homes and source/output aliases remain protected.
 
+Use one writer per output directory. Before upgrading active jobs, read the
+[ownership and restart requirements](TOOLS.md#upgrading-existing-jobs): legacy
+durable receipts without inode evidence cannot be adopted by the new runtime.
+
 ## Diagnostics
 
 | Command | Description |

@@ -94,7 +94,7 @@ def _safe_tool(fn: Any) -> Any:
     fn = with_output_policy(fn)
     if inspect.iscoroutinefunction(fn):
 
-        @functools.wraps(fn)
+        @functools.wraps(fn, assigned=(*functools.WRAPPER_ASSIGNMENTS, "__annotations__"))
         async def async_wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
             try:
                 return await fn(*args, **kwargs)
@@ -105,7 +105,7 @@ def _safe_tool(fn: Any) -> Any:
 
         return async_wrapper
 
-    @functools.wraps(fn)
+    @functools.wraps(fn, assigned=(*functools.WRAPPER_ASSIGNMENTS, "__annotations__"))
     def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
         try:
             return fn(*args, **kwargs)

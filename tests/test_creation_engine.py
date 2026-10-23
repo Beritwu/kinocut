@@ -33,6 +33,45 @@ def test_create_video_project_rejects_unsafe_slug(tmp_path: Path):
     assert exc_info.value.code == "invalid_parameter"
 
 
+@pytest.mark.parametrize("agent_home", [".hermes", ".codex", ".claude"])
+def test_create_video_project_rejects_redirected_projects_directory(tmp_path, monkeypatch, agent_home):
+    home = tmp_path / "home"
+    protected = home / agent_home
+    protected.mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    output = tmp_path / "output"
+    output.mkdir()
+    try:
+        (output / "projects").symlink_to(protected, target_is_directory=True)
+    except OSError:
+        pytest.skip("Directory symlinks require platform support")
+
+    with pytest.raises(MCPVideoError) as exc_info:
+        create_video_project("protected-project", output_dir=str(output))
+
+    assert exc_info.value.code == "unsafe_path"
+    assert not list(protected.iterdir())
+
+
+def test_create_video_project_rejects_redirected_configured_agent_home(tmp_path, monkeypatch):
+    protected = tmp_path / "custom-agent-state"
+    protected.mkdir()
+    monkeypatch.setenv("HERMES_HOME", str(protected))
+    output = tmp_path / "output"
+    output.mkdir()
+    try:
+        (output / "projects").symlink_to(protected, target_is_directory=True)
+    except OSError:
+        pytest.skip("Directory symlinks require platform support")
+
+    with pytest.raises(MCPVideoError) as exc_info:
+        create_video_project("protected-project", output_dir=str(output))
+
+    assert exc_info.value.code == "unsafe_path"
+    assert not list(protected.iterdir())
+
+
 def test_read_style_pack_parses_style_and_negative_blocks(tmp_path: Path):
     style_path = tmp_path / "style.md"
     style_path.write_text(
