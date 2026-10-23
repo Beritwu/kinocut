@@ -11,6 +11,8 @@ This project follows a simple release-note style:
 
 ## Unreleased
 
+## 1.16.3 - 2026-10-23
+
 ### Security
 
 - Refuse existing outputs unless the caller explicitly supplies MCP/Python `overwrite=true` or CLI `--overwrite`. Existing non-media files require inode evidence that Kinocut created them for the same job; agent configuration homes remain protected.
@@ -20,6 +22,11 @@ This project follows a simple release-note style:
 
 - Retain durable receipt/shorts-plan ownership witnesses across worker restarts. Older artifacts without witnesses stay protected; create a new job instead of adopting or replacing them.
 - Remove secondary installers from plugin skills, disclose optional network access, and document a small Hermes tool allowlist to reduce per-request schemas.
+
+### Fixed
+
+- Check completed project destinations, including symlink redirects into protected agent homes.
+- Preserve MCP request-context annotations and progress reporting on Python 3.14 without exposing context in tool input schemas.
 
 ## 1.16.2 - 2026-10-21
 
