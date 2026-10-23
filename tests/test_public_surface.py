@@ -252,7 +252,7 @@ def test_server_json_and_readme_match_registry_identity():
 
     assert server["name"] == "tech.kyanitelabs/kinocut"
     assert server["websiteUrl"] == "https://kinocut.dev/"
-    # GitHub is the canonical source and public registry/collaboration repository.
+    # Registry metadata points at the public collaboration repository.
     assert server["repository"]["url"] == "https://github.com/KyaniteLabs/kinocut"
     assert server["repository"]["source"] == "github"
     assert server["packages"][0]["identifier"] == "kinocut"
@@ -262,20 +262,20 @@ def test_server_json_and_readme_match_registry_identity():
 
 
 def test_readme_declares_repository_topology():
-    """README identifies GitHub as primary and Forgejo as its downstream mirror."""
+    """Canonical source and public collaboration retain distinct host roles."""
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     source_row = next(line for line in readme.splitlines() if line.startswith("| **Source** |"))
-    primary, downstream = source_row.split(" · ", 1)
-    assert "https://github.com/KyaniteLabs/kinocut" in primary
+    primary, public = source_row.split(" · ", 1)
+    assert "https://git.kyanitelabs.tech/KyaniteLabs/kinocut" in primary
     assert "canonical" in primary.lower()
-    assert "https://git.kyanitelabs.tech/KyaniteLabs/kinocut" in downstream
-    assert "downstream mirror" in downstream.lower()
+    assert "https://github.com/KyaniteLabs/kinocut" in public
+    assert "public mirror" in public.lower()
 
 
 def test_external_routing_surfaces_route_exclusively_to_github():
     """External bug/support/security/contribution routes remain GitHub-exclusive.
 
-    Forgejo may appear as downstream mirror attribution, but every surface an
+    Forgejo may appear as canonical source attribution, but every surface an
     external contributor follows to file a bug, report a vulnerability, ask a
     question, or open a pull request must keep routing to GitHub. Contributors
     never need Forgejo access.

@@ -218,8 +218,7 @@ jobs:
           CANDIDATE_SHA: ${{ github.sha }}
         run: |
           if ! command -v ffmpeg &>/dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y ffmpeg
+            bash .github/scripts/install-ffmpeg-ubuntu.sh
           fi
           run_root="${RUNNER_TEMP}/kinocut-release-onboarding-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           python -m venv "${RUNNER_TEMP}/kinocut-release-onboarding-venv"

@@ -100,9 +100,8 @@ jobs:
           path: mcpb-artifacts
       - name: Provision FFmpeg on Linux
         if: matrix.os == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends ffmpeg
+        timeout-minutes: 10
+        run: bash .github/scripts/install-ffmpeg-ubuntu.sh
       - name: Provision FFmpeg on macOS
         if: matrix.os == 'macos'
         run: |
@@ -220,9 +219,8 @@ jobs:
           name: staged-mcpb-build
           path: mcpb-artifacts
       - name: Provision FFmpeg on Linux
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends ffmpeg
+        timeout-minutes: 10
+        run: bash .github/scripts/install-ffmpeg-ubuntu.sh
       - name: Validate native FFmpeg toolchain
         shell: bash
         run: |

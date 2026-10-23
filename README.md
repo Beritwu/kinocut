@@ -75,7 +75,7 @@
 | **Product site** | [kinocut.dev](https://kinocut.dev/) |
 | **PyPI** | [`kinocut`](https://pypi.org/project/kinocut/) |
 | **MCP Registry** | [`tech.kyanitelabs/kinocut`](https://registry.modelcontextprotocol.io/v0/servers/tech.kyanitelabs%2Fkinocut/versions/latest) |
-| **Source** | [GitHub](https://github.com/KyaniteLabs/kinocut) (**canonical code, issues, PRs, CI, and releases**) · [Forgejo](https://git.kyanitelabs.tech/KyaniteLabs/kinocut) (private, maintainers only; downstream mirror, automated sync cutover pending verification) |
+| **Source** | [Forgejo](https://git.kyanitelabs.tech/KyaniteLabs/kinocut) (canonical source) · [GitHub](https://github.com/KyaniteLabs/kinocut) (public mirror, collaboration, CI and releases) |
 | **License** | Apache-2.0 |
 | **Runs on** | Your machine (macOS, Linux, Windows) — FFmpeg required on `PATH` |
 | **Not** | A hosted cloud editor, credit-metered SaaS, or untyped FFmpeg shell wrapper |
@@ -119,14 +119,14 @@ video.release_checkpoint(short.output_path)  # thumbnail + quality gate before y
 | --- | --- | --- |
 | **PyPI / npm checkpoint** | **[1.16.2](https://pypi.org/project/kinocut/1.16.2/)** (2026-10-21) | Last recorded publication checkpoint; consult the registries for the latest version. Install with `pip install kinocut`. |
 | **GitHub latest release / MCP Registry** | **1.16.2** | GitHub release `v1.16.2` and the official MCP Registry (`tech.kyanitelabs/kinocut`, local `uvx kinocut` stdio package) report 1.16.2 (verified 2026-10-21). Final owner acceptance and fleet rollout remain separate. |
-| **This source version** | **1.16.3 candidate** · **203 MCP / 177 CLI** | Prepared development candidate; publication remains pending. |
+| **This source version** | **1.16.3 candidate** · **203 MCP / 177 CLI** | Adds explicit overwrite consent and the Hermes plugin review fixes; publication is tracked separately in `docs/public_claims.json`. |
 | **Next public release** | **TBD** | Human residuals (directories, launch posts) stay gated; further bumps need a new go-ahead. |
 
 Install from PyPI for the stable package, including the optional object-matte extra. Clone `master` when you want local development changes beyond the published package; see [docs/PRODUCT_MATTE.md](docs/PRODUCT_MATTE.md) for the published object-matte workflow.
 
 ## What's in 1.16.2
 
-Published 2026-10-21: **203 MCP tools / 177 CLI commands**; `mcp-video==1.6.17` installs `kinocut==1.16.2`. `create-from-images` is now frame-exact, accepts rational frame rates such as `30000/1001` and a `--list` / `list_file` input, and enforces frame-rate and image-count bounds on every entry point. The official MCP Registry entry is republished as the local `uvx kinocut` stdio package. Thanks to [@Beritwu](https://github.com/Beritwu) for [#616](https://github.com/KyaniteLabs/kinocut/pull/616). See [release notes](docs/status/2026-10-21-1.16.2-release-notes.md).
+Published 2026-10-21: **203 MCP tools / 177 CLI commands**; `mcp-video==1.6.17` installs `kinocut==1.16.2`. `create-from-images` is now frame-exact, accepts rational frame rates such as `30000/1001` and a `--list` / `list_file` input, and enforces frame-rate and image-count bounds on every entry point. The official MCP Registry entry is republished as the local `uvx kinocut` stdio package. Thanks to [@Beritwu](https://github.com/Beritwu) for [#616](https://github.com/KyaniteLabs/kinocut/pull/616). See the [published release](https://github.com/KyaniteLabs/kinocut/releases/tag/v1.16.2).
 
 ## What's in 1.16.1
 
