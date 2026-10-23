@@ -5,6 +5,11 @@
 Guarded local video editing for AI agents. The plugin adds the Kinocut MCP
 server and two skills (`kinocut`, `kinocut-repurpose`) to your agent.
 
+Plugin bundle **1.16.6** pins the separately versioned Kinocut runtime
+**1.16.3**. The legacy `mcp-video` compatibility package **1.6.18** installs
+that same runtime. Catalog entries use the bundle version; launchers use the
+runtime version.
+
 Kinocut processes media on your own machine. Network use depends on the features
 you choose:
 
@@ -27,11 +32,11 @@ configuration directories.
 - FFmpeg and ffprobe on `PATH`
 - Python 3.11 or newer (uv installs it if needed)
 
-Check your setup with `uvx kinocut==1.16.2 doctor`.
+Check your setup with `uvx kinocut==1.16.3 doctor`.
 
 ## Claude installation
 
-Claude Code and Cowork run the pinned `uvx kinocut==1.16.2` launcher.
+Claude Code and Cowork run the pinned `uvx kinocut==1.16.3` launcher.
 The bundled Python project and `uv.lock` record exact core dependency versions,
 public PyPI sources and artifact hashes for directory review. The directory's
 locked-launcher check requires this plain pinned command, without environment
@@ -44,7 +49,7 @@ snapshot. uv caches the environment outside the installed plugin files.
 The first launch downloads the dependencies from PyPI. Later launches
 reuse that environment. This does not bundle FFmpeg or optional AI packages.
 Cursor, MiniMax, Kimi and Agent Plugins hosts retain the pinned
-`uvx kinocut==1.16.2` launcher below.
+`uvx kinocut==1.16.3` launcher below.
 
 Claude's directory still requires manual review for registry package launchers,
 including locked ones. The lock documents a dependency snapshot; it does not guarantee
@@ -72,7 +77,7 @@ Clients can also use the pinned configuration directly:
 ```json
 {
   "mcpServers": {
-    "kinocut": { "command": "uvx", "args": ["kinocut==1.16.2"] }
+    "kinocut": { "command": "uvx", "args": ["kinocut==1.16.3"] }
   }
 }
 ```
@@ -87,7 +92,7 @@ goes in `mcp_servers` in your Hermes `config.yaml`:
 mcp_servers:
   kinocut:
     command: uvx
-    args: ["kinocut==1.16.2"]
+    args: ["kinocut==1.16.3"]
     tools:
       include: [search_tools, video_info, video_trim, video_thumbnail]
       resources: false
