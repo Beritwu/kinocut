@@ -12,7 +12,10 @@ from kinocut.engine_audio_normalize import normalize_audio
 from kinocut.engine_audio_mix import mix_audio
 from kinocut.errors import MCPVideoError, ProcessingError
 
-pytestmark = pytest.mark.skipif(not shutil.which("ffmpeg"), reason="needs FFmpeg")
+pytestmark = [
+    pytest.mark.skipif(not shutil.which("ffmpeg"), reason="needs FFmpeg"),
+    pytest.mark.usefixtures("overwrite_consent"),
+]
 
 
 def _ffmpeg(*args):

@@ -13,6 +13,9 @@ from kinocut.product.shorts_plan import IntakeReport, ShortsPlan, save_shorts_pl
 from kinocut.product.shorts_render import _safe_render_base
 from kinocut.product.shorts_review import review_shorts_plan
 
+# These cases explicitly authorize updates to job-created review plans.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def _plan(tmp_path: Path) -> ShortsPlan:
     project = tmp_path / "proj"

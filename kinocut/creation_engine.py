@@ -9,6 +9,7 @@ import shutil
 from typing import Any
 
 from .errors import MCPVideoError
+from .ffmpeg_helpers import _validate_output_path
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _BLOCK_RE = re.compile(r"^##\s+((?:STYLE|NEG)_[A-Z0-9_]+)(?:\s+\(([^()]+)\))?\s*$")
@@ -39,7 +40,7 @@ def _validate_slug(slug: str) -> str:
 
 
 def _resolve_dir(path: str | None) -> Path:
-    base = Path(path or ".").expanduser().resolve()
+    base = Path(_validate_output_path(str(Path(path or ".").expanduser()))).resolve()
     if base.exists() and not base.is_dir():
         raise _creation_error(f"Output directory is not a directory: {base}")
     return base

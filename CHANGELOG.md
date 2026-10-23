@@ -11,6 +11,16 @@ This project follows a simple release-note style:
 
 ## Unreleased
 
+### Security
+
+- Refuse existing outputs unless the caller explicitly supplies MCP/Python `overwrite=true` or CLI `--overwrite`. Existing non-media files require inode evidence that Kinocut created them for the same job; agent configuration homes remain protected.
+- Publish new files without replacing a destination created during rendering, and apply artifact guards to saved plans, receipts, font/model caches and HLS playlists.
+
+### Changed
+
+- Retain durable receipt/shorts-plan ownership witnesses across worker restarts. Older artifacts without witnesses stay protected; create a new job instead of adopting or replacing them.
+- Remove secondary installers from plugin skills, disclose optional network access, and document a small Hermes tool allowlist to reduce per-request schemas.
+
 ## 1.16.2 - 2026-10-21
 
 ### Added

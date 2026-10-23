@@ -13,6 +13,7 @@ from .engine_resize import resize
 from .engine_storyboard import storyboard
 from .engine_thumbnail import thumbnail
 from .errors import MCPVideoError
+from .ffmpeg_helpers import _atomic_artifact, _open_staged_writer
 from .ffmpeg_helpers import _validate_input_path, _validate_output_path
 from .paths import _auto_output_dir
 from .defaults import DEFAULT_QUALITY_GATE_SCORE
@@ -90,8 +91,8 @@ def _variant_filename(platform: str) -> str:
 
 def _write_manifest(manifest: dict[str, Any], output_dir: str) -> str:
     manifest_path = os.path.join(output_dir, "repurpose_manifest.json")
-    with open(manifest_path, "w", encoding="utf-8") as handle:
-        json.dump(manifest, handle, indent=2, sort_keys=True)
+    with _atomic_artifact(manifest_path) as staged, _open_staged_writer(staged) as stream:
+        stream.write(json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8"))
     return manifest_path
 
 

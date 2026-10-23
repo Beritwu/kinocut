@@ -6,6 +6,12 @@ Published 1.16.2 and its matching development checkout: **203 MCP tools / 177 CL
 kino [command] [options]
 ```
 
+Existing output files are refused by default. To replace existing media, pass
+the global flag before the command: `kino --overwrite trim INPUT ...`.
+Pre-existing non-media files (including JSON, text, CSV and TypeScript) remain
+protected; only files created in the same job can be replaced with consent.
+Agent configuration homes and source/output aliases remain protected.
+
 ## Diagnostics
 
 | Command | Description |

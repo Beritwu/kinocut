@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 
+from ...defaults import DEFAULT_OVERWRITE
+
 from . import advanced
 from . import ai
 from . import audio
@@ -43,6 +45,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--mcp",
         action="store_true",
         help="Run as MCP server (default mode)",
+    )
+    parser.add_argument(
+        "--overwrite",
+        dest="allow_existing_output",
+        action="store_true",
+        default=DEFAULT_OVERWRITE,
+        help="Explicitly allow replacing existing media; pre-existing non-media files remain protected",
     )
     parser.add_argument(
         "--format",

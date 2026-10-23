@@ -14,6 +14,8 @@ from mcp_video.errors import MCPVideoError
 from mcp_video.rescue.models import RescuePlan, canonical_payload
 from mcp_video.rescue.planner import plan_rescue, read_plan
 
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()

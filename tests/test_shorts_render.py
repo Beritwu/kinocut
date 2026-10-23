@@ -13,6 +13,9 @@ from kinocut.product.shorts_plan import RenderRecord, ShortsPlan, load_shorts_pl
 from kinocut.product.shorts_render import _candidate_digest, render_approved_candidate
 from kinocut.product.shorts_review import review_shorts_plan
 
+# These cases explicitly authorize updates to job-created review plans.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def _plan(tmp_path: Path, source: Path) -> str:
     excerpt = "A complete candidate thought."

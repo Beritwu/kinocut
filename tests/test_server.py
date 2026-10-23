@@ -601,6 +601,7 @@ class TestVideoBatchTool:
             [sample_video, sample_video],
             operation="trim",
             params={"start": "0", "duration": "1"},
+            overwrite=True,
         )
         assert result["success"] is True
         assert result["total"] == 2
@@ -1101,8 +1102,8 @@ class TestServerAIEdgeCases:
         assert call_log == ["https://example.com/video.mp4"]
         assert "error" not in result
 
-    def test_color_grade_none_reference_does_not_crash(self, sample_video):
-        result = video_ai_color_grade(sample_video, output_path="/tmp/out.mp4", reference_path=None)
+    def test_color_grade_none_reference_does_not_crash(self, sample_video, tmp_path):
+        result = video_ai_color_grade(sample_video, output_path=str(tmp_path / "out.mp4"), reference_path=None)
         assert result["success"] is True
 
 

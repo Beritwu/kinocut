@@ -443,15 +443,11 @@ class TestChromaKey:
         result = chroma_key(sample_video, color="0xFF0000", similarity=0.05)
         assert result.success is True
 
-    def test_chroma_key_preserves_alpha_with_mov(self, sample_video):
+    def test_chroma_key_preserves_alpha_with_mov(self, sample_video, tmp_path):
         """MOV output should use prores_ks with alpha channel support."""
-        import tempfile
-
-        with tempfile.NamedTemporaryFile(suffix=".mov", delete=False) as tmp:
-            result = chroma_key(sample_video, output_path=tmp.name)
-            assert result.success is True
-            assert os.path.isfile(result.output_path)
-        os.unlink(tmp.name)
+        result = chroma_key(sample_video, output_path=str(tmp_path / "alpha.mov"))
+        assert result.success is True
+        assert os.path.isfile(result.output_path)
 
 
 class TestDenoiseFilter:
@@ -543,9 +539,9 @@ class TestConvertValidation:
 
 
 class TestGifQualityScaling:
-    def test_gif_low_quality_is_smaller(self, sample_video):
-        low = convert(sample_video, format="gif", quality="low")
-        high = convert(sample_video, format="gif", quality="high")
+    def test_gif_low_quality_is_smaller(self, sample_video, tmp_path):
+        low = convert(sample_video, format="gif", quality="low", output_path=str(tmp_path / "low.gif"))
+        high = convert(sample_video, format="gif", quality="high", output_path=str(tmp_path / "high.gif"))
         # Low quality GIF should be smaller (320px wide vs 640px)
         assert low.success is True
         assert high.success is True

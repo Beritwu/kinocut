@@ -4,12 +4,16 @@ import hashlib
 import json
 import os
 import shutil
+from pathlib import Path
 
 import pytest
 
 from kinocut.engine_composite_layers import composite_layers
 from kinocut.errors import MCPVideoError
-from kinocut.ffmpeg_helpers import _reset_operation_inputs
+from kinocut.ffmpeg_helpers import _atomic_artifact, _reset_operation_inputs
+
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
 
 
 @pytest.fixture(autouse=True)
@@ -67,7 +71,8 @@ def test_receipt_staging_failure_keeps_both_prior_artifacts(tmp_path, monkeypatc
     spec = _spec(tmp_path)
     output, plan = tmp_path / "out.png", tmp_path / "plan.json"
     output.write_bytes(b"prior media")
-    plan.write_bytes(b"prior plan")
+    with _atomic_artifact(str(plan)) as staged:
+        Path(staged).write_bytes(b"prior plan")
 
     def failed_write(*args, **kwargs):
         raise OSError("artifact storage failure")
@@ -84,7 +89,8 @@ def test_postflight_failure_does_not_replace_prior_media_or_plan(tmp_path, monke
     spec = _spec(tmp_path)
     output, plan = tmp_path / "out.mp4", tmp_path / "plan.json"
     output.write_bytes(b"prior media")
-    plan.write_bytes(b"prior plan")
+    with _atomic_artifact(str(plan)) as staged:
+        Path(staged).write_bytes(b"prior plan")
 
     def reject(*args, **kwargs):
         raise MCPVideoError("postflight failed", error_type="processing_error")
@@ -103,7 +109,8 @@ def test_receipt_publication_failure_reports_committed_media_without_unsafe_roll
     spec = _spec(tmp_path)
     output, plan = tmp_path / "out.png", tmp_path / "plan.json"
     output.write_bytes(b"prior media")
-    plan.write_bytes(b"prior receipt")
+    with _atomic_artifact(str(plan)) as staged:
+        Path(staged).write_bytes(b"prior receipt")
     replace = os.replace
 
     def fail_plan(source, target, **kwargs):

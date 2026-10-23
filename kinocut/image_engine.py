@@ -151,9 +151,10 @@ def _extract_frame_if_video(path: str) -> str:
     if ext not in VIDEO_EXTENSIONS:
         return path
     from .engine_thumbnail import thumbnail
+    import secrets
     import tempfile
 
-    frame_path = os.path.join(tempfile.gettempdir(), f"mcp_video_frame_{os.path.basename(path)}.jpg")
+    frame_path = os.path.join(tempfile.gettempdir(), f"mcp_video_frame_{secrets.token_hex(16)}.jpg")
     result = thumbnail(path, output_path=frame_path)
     return result.frame_path
 

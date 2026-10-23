@@ -19,7 +19,6 @@ import json
 import logging
 import os
 import tempfile
-import uuid
 from contextlib import ExitStack, contextmanager, suppress
 from pathlib import Path
 from collections.abc import Iterator
@@ -55,6 +54,9 @@ from .engine_audio_bed_filters import (
 )
 from .errors import MCPVideoError, ProcessingError
 from .ffmpeg_helpers import (
+    _atomic_artifact,
+    _atomic_output,
+    _open_staged_writer,
     _get_video_duration,
     _run_ffmpeg,
     _run_ffprobe_json,
@@ -275,57 +277,47 @@ def _guarded_render(
     the staging file and workspace are cleaned up so no partial output remains.
     """
     parent = Path(output_path).parent
-    staging_fd, staging_name = tempfile.mkstemp(
-        dir=parent,
-        prefix=".audio-bed.publish.",
-        suffix=Path(output_path).suffix,
-    )
-    os.close(staging_fd)
-    staging = Path(staging_name)
-    try:
-        with tempfile.TemporaryDirectory(dir=parent, prefix=".audio-bed.") as workspace_dir:
-            workspace = Path(workspace_dir)
-            bed_input = _resolve_bed_input(
-                music_path,
-                bed_duration,
-                target_duration,
-                loop,
-                loop_crossfade,
-                workspace,
-                pass_fds=pass_fds,
-            )
-            fc = _select_filtergraph(
-                voice_has_audio=voice_has_audio,
-                bed_duration=bed_duration,
-                target_duration=target_duration,
-                music_volume=music_volume,
-                duck_threshold=duck_threshold,
-                duck_ratio=duck_ratio,
-                duck_attack=duck_attack,
-                duck_release=duck_release,
-                fade_in=fade_in,
-                fade_out=fade_out,
-                target_lufs=target_lufs,
-                loop=loop,
-                loop_crossfade=loop_crossfade,
-            )
-            args = _render_args(
-                voice_source,
-                bed_input,
-                str(staging),
-                voice_has_audio=voice_has_audio,
-                voice_has_video=voice_has_video,
-                target_duration=target_duration,
-                filter_complex=fc,
-                map_video=True,
-            )
-            _run_ffmpeg(args, pass_fds=pass_fds)
-        os.replace(staging, output_path)
-        return output_path
-    except BaseException:
-        with suppress(OSError):
-            staging.unlink(missing_ok=True)
-        raise
+    with (
+        _atomic_output(output_path) as staging,
+        tempfile.TemporaryDirectory(dir=parent, prefix=".audio-bed.") as workspace_dir,
+    ):
+        workspace = Path(workspace_dir)
+        bed_input = _resolve_bed_input(
+            music_path,
+            bed_duration,
+            target_duration,
+            loop,
+            loop_crossfade,
+            workspace,
+            pass_fds=pass_fds,
+        )
+        fc = _select_filtergraph(
+            voice_has_audio=voice_has_audio,
+            bed_duration=bed_duration,
+            target_duration=target_duration,
+            music_volume=music_volume,
+            duck_threshold=duck_threshold,
+            duck_ratio=duck_ratio,
+            duck_attack=duck_attack,
+            duck_release=duck_release,
+            fade_in=fade_in,
+            fade_out=fade_out,
+            target_lufs=target_lufs,
+            loop=loop,
+            loop_crossfade=loop_crossfade,
+        )
+        args = _render_args(
+            voice_source,
+            bed_input,
+            str(staging),
+            voice_has_audio=voice_has_audio,
+            voice_has_video=voice_has_video,
+            target_duration=target_duration,
+            filter_complex=fc,
+            map_video=True,
+        )
+        _run_ffmpeg(args, pass_fds=pass_fds)
+    return output_path
 
 
 def _resolve_bed_input(
@@ -468,11 +460,9 @@ def _receipt_hash(receipt: AudioBedReceipt) -> str:
 
 def _write_receipt(path: str, receipt: AudioBedReceipt) -> None:
     """Write the receipt as pretty-printed JSON via an atomic temp-and-rename."""
-    validated = _validate_artifact_path(path)
-    temporary = Path(validated).with_name(f".{Path(validated).name}.{uuid.uuid4().hex}.tmp")
     payload = receipt.model_dump_json(indent=2)
-    temporary.write_text(payload + "\n", encoding="utf-8")
-    os.replace(temporary, validated)
+    with _atomic_artifact(path) as staged, _open_staged_writer(staged) as stream:
+        stream.write((payload + "\n").encode("utf-8"))
 
 
 # ---------------------------------------------------------------------------
@@ -568,16 +558,78 @@ def _validate_loop_bounds(
     return needs_loop
 
 
+def _audio_bed_result(output_path, output_duration, probe, needs_loop, timing, warnings, receipt):
+    """Describe the verified render and its receipt."""
+    logger.info(
+        "audio_bed: rendered %s (%.3fs, ducking=%s, loop=%s) in %.0fms",
+        output_path,
+        output_duration,
+        probe.voice_has_audio,
+        needs_loop,
+        timing.get("elapsed_ms") or 0.0,
+    )
+    return {
+        "output_path": output_path,
+        "output_duration": output_duration,
+        "ducking_engaged": probe.voice_has_audio,
+        "warnings": tuple(warnings),
+        "elapsed_ms": timing.get("elapsed_ms"),
+        "receipt": receipt.model_dump(mode="json"),
+    }
+
+
+def _prepare_audio_bed(probe, loop, loop_crossfade):
+    """Validate the probed bed and compute its bounded render policy."""
+    if not probe.music_has_audio:
+        raise _validation_error("music bed must contain an audio stream", "missing_audio_stream")
+    _require_filters(probe.voice_has_audio)
+    target_duration = probe.voice_duration
+    needs_loop = _validate_loop_bounds(probe.bed_duration, target_duration, loop, loop_crossfade)
+    warnings = _compute_warnings(
+        voice_has_audio=probe.voice_has_audio,
+        bed_duration=probe.bed_duration,
+        target_duration=target_duration,
+        loop=loop,
+    )
+    return target_duration, needs_loop, warnings
+
+
+def _verify_bed_output(output_path, target_duration, duration_tolerance):
+    """Remove a failed stage before its enclosing transaction can publish it."""
+    try:
+        return _verify_output_duration(output_path, target_duration, duration_tolerance)
+    except ProcessingError:
+        with suppress(OSError):
+            Path(output_path).unlink(missing_ok=True)
+        raise
+
+
 def _finalize_audio_bed(
     *,
-    voice_source: str, music_path: str, voice_display_path: str,
-    music_display_path: str, voice_content_sha256: str, music_content_sha256: str,
-    pass_fds: tuple[int, ...], output_path: str, probe: _BedProbe,
-    target_duration: float, music_volume: float, duck_threshold: float,
-    duck_ratio: float, duck_attack: float, duck_release: float,
-    fade_in: float, fade_out: float, target_lufs: float,
-    loop: bool, loop_crossfade: float, duration_tolerance: float,
-    save_receipt: str | None, warnings: list[str], needs_loop: bool,
+    voice_source: str,
+    music_path: str,
+    voice_display_path: str,
+    music_display_path: str,
+    voice_content_sha256: str,
+    music_content_sha256: str,
+    pass_fds: tuple[int, ...],
+    output_path: str,
+    probe: _BedProbe,
+    target_duration: float,
+    music_volume: float,
+    duck_threshold: float,
+    duck_ratio: float,
+    duck_attack: float,
+    duck_release: float,
+    fade_in: float,
+    fade_out: float,
+    target_lufs: float,
+    loop: bool,
+    loop_crossfade: float,
+    duration_tolerance: float,
+    save_receipt: str | None,
+    warnings: list[str],
+    needs_loop: bool,
 ) -> dict[str, Any]:
     """Render, verify, build receipt, and return the structured result."""
     with _timed_operation() as timing:
@@ -601,16 +653,7 @@ def _finalize_audio_bed(
             bed_duration=probe.bed_duration,
             pass_fds=pass_fds,
         )
-    try:
-        output_duration = _verify_output_duration(
-            output_path,
-            target_duration,
-            duration_tolerance,
-        )
-    except ProcessingError:
-        with suppress(OSError):
-            Path(output_path).unlink(missing_ok=True)
-        raise
+    output_duration = _verify_bed_output(output_path, target_duration, duration_tolerance)
     receipt = _build_receipt(
         voice_source=voice_display_path,
         music_path=music_display_path,
@@ -636,29 +679,26 @@ def _finalize_audio_bed(
     )
     if save_receipt is not None:
         _write_receipt(save_receipt, receipt)
-    logger.info(
-        "audio_bed: rendered %s (%.3fs, ducking=%s, loop=%s) in %.0fms",
-        output_path,
-        output_duration,
-        probe.voice_has_audio,
-        needs_loop,
-        timing.get("elapsed_ms") or 0.0,
-    )
-    return {"output_path": output_path, "output_duration": output_duration,
-            "ducking_engaged": probe.voice_has_audio, "warnings": tuple(warnings),
-            "elapsed_ms": timing.get("elapsed_ms"), "receipt": receipt.model_dump(mode="json")}
+    return _audio_bed_result(output_path, output_duration, probe, needs_loop, timing, warnings, receipt)
 
 
 def audio_bed(
-    voice_source: str, music_path: str, output_path: str,
+    voice_source: str,
+    music_path: str,
+    output_path: str,
     *,
-    loop: bool = True, loop_crossfade: float = DEFAULT_AUDIO_BED_LOOP_CROSSFADE,
-    fade_in: float = DEFAULT_AUDIO_BED_FADE_IN, fade_out: float = DEFAULT_AUDIO_BED_FADE_OUT,
+    loop: bool = True,
+    loop_crossfade: float = DEFAULT_AUDIO_BED_LOOP_CROSSFADE,
+    fade_in: float = DEFAULT_AUDIO_BED_FADE_IN,
+    fade_out: float = DEFAULT_AUDIO_BED_FADE_OUT,
     target_lufs: float = DEFAULT_AUDIO_BED_TARGET_LUFS,
-    duck_threshold: float = DEFAULT_AUDIO_BED_DUCK_THRESHOLD, duck_ratio: float = DEFAULT_AUDIO_BED_DUCK_RATIO,
-    duck_attack: float = DEFAULT_AUDIO_BED_DUCK_ATTACK_MS, duck_release: float = DEFAULT_AUDIO_BED_DUCK_RELEASE_MS,
+    duck_threshold: float = DEFAULT_AUDIO_BED_DUCK_THRESHOLD,
+    duck_ratio: float = DEFAULT_AUDIO_BED_DUCK_RATIO,
+    duck_attack: float = DEFAULT_AUDIO_BED_DUCK_ATTACK_MS,
+    duck_release: float = DEFAULT_AUDIO_BED_DUCK_RELEASE_MS,
     music_volume: float = DEFAULT_AUDIO_BED_MUSIC_VOLUME,
-    duration_tolerance: float = DEFAULT_AUDIO_BED_DURATION_TOLERANCE_SECONDS, save_receipt: str | None = None,
+    duration_tolerance: float = DEFAULT_AUDIO_BED_DURATION_TOLERANCE_SECONDS,
+    save_receipt: str | None = None,
 ) -> dict[str, Any]:
     """Governed one-shot audio-bed: duck music under voice, normalize, receipt."""
     _validate_audio_bed_params(
@@ -684,25 +724,7 @@ def audio_bed(
         voice_snapshot, music_snapshot = sources
         pass_fds = voice_snapshot.pass_fds + music_snapshot.pass_fds
         probe = _probe_sources(voice_snapshot.path, music_snapshot.path, pass_fds=pass_fds)
-        if not probe.music_has_audio:
-            raise _validation_error(
-                "music bed must contain an audio stream",
-                "missing_audio_stream",
-            )
-        _require_filters(probe.voice_has_audio)
-        target_duration = probe.voice_duration
-        needs_loop = _validate_loop_bounds(
-            probe.bed_duration,
-            target_duration,
-            loop,
-            loop_crossfade,
-        )
-        warnings = _compute_warnings(
-            voice_has_audio=probe.voice_has_audio,
-            bed_duration=probe.bed_duration,
-            target_duration=target_duration,
-            loop=loop,
-        )
+        target_duration, needs_loop, warnings = _prepare_audio_bed(probe, loop, loop_crossfade)
         return _finalize_audio_bed(
             voice_source=voice_snapshot.path,
             music_path=music_snapshot.path,

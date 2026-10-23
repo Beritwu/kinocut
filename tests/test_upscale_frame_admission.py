@@ -14,6 +14,9 @@ import pytest
 from kinocut.ai_engine import upscale
 from kinocut.errors import MCPVideoError, ProcessingError
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 @pytest.fixture
 def clip_factory(tmp_path):

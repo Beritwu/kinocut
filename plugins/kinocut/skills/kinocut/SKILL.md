@@ -38,12 +38,12 @@ and `video_release_checkpoint`, then require human visual review.
 
 ## Start Here
 
-- Read `../../README.md` for install and the safety contract.
+- Read `../../README.md` for runtime requirements, network disclosures, and the safety contract.
 - Run `kino doctor` before FFmpeg / Hyperframes / AI extras.
 
 ## Choose A Surface
 
-- MCP: best for Claude Code, Cursor, Codex-style clients, and other agent hosts. Configure `uvx --from kinocut kino`.
+- MCP: use the pinned server that the host already starts from this plugin's `mcp.json`. Do not install a second copy or modify another host's configuration.
 - CLI: best for direct local edits, quick diagnostics, `composite-layers --dry-run`, batch jobs, and CI-friendly JSON output.
 - Python client: best for repeatable pipelines that need structured results, output paths, and saved layer-plan receipts.
 
@@ -89,7 +89,7 @@ directors never write pixels.
 The optional object-matte extra is available in published 1.16.2. Use the **existing** `hyperframes-remove-background` / `hyperframes_remove_background` command. Default model is people. For catalog SKUs, jewelry, bottles, shoes, packaging, or anything that is not a person:
 
 1. `hyperframes_remove_background(info=true)` — lists models, no download.
-2. `pip install "kinocut[object-matte]"` then `model="birefnet-general"`.
+2. The optional extra belongs in the server's uvx arguments, pinned to the same version as `mcp.json`: replace its `kinocut==1.16.2` argument with `kinocut[object-matte]==1.16.2`. Installing the extra in a separate Python environment does not affect the uvx server. Have the operator configure this extra before using `model="birefnet-general"`.
 3. Optional `--mask-interval 3` on product video. Optional equipment overlay for leftover turntable/stand/tripod/sweep.
 4. Composite onto a shop plate with `composite-layers`. Keep every `src` inside the spec directory.
 
@@ -281,22 +281,16 @@ plan = video.composite_layers(
 )
 ```
 
-## MCP Setup
+## Plugin runtime
 
-```json
-{
-  "mcpServers": {
-    "kinocut": {
-      "command": "uvx",
-      "args": ["--from", "kinocut", "kino"]
-    }
-  }
-}
-```
+The host starts the server from the bundled, version-pinned `mcp.json`. Use the
+available MCP tools directly. CLI and Python examples apply only when those
+surfaces are already available; do not install them from this skill.
 
 ## Guardrails
 
 - Do not publish or hand off media without a quality check and human review.
 - Prefer structured Kinocut tools over raw FFmpeg shell commands; use `composite-layers`/`video_composite_layers` for ordered layer stacks instead of hand-written filtergraphs.
 - Keep output paths explicit so generated media is easy to inspect.
+- Prefer new output paths; never target existing source files, credentials, sessions or agent configuration directories.
 - For Hyperframes, verify project structure and rendered snapshots before full video export.

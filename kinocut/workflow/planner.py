@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from ..errors import MCPVideoError
-from ..ffmpeg_helpers import _validate_artifact_path
+from ..ffmpeg_helpers import _atomic_artifact, _open_staged_writer, _validate_artifact_path
 from ._errors import INVALID_WORKFLOW_SPEC, UNSAFE_WORKFLOW_SOURCE, workflow_error
 from ._versions import RENDER_DETERMINISM_SCOPE, versions
 from .composite import iter_composite_refs
@@ -221,7 +221,8 @@ def _write_plan(plan: dict[str, Any], save_plan: str, workspace_root: Path | Non
     _validate_artifact_path(save_plan)  # traversal / symlink / system-dir / dotfile / overwrite-non-json guard
     if workspace_root is not None:
         _confine_artifact_path(save_plan, workspace_root, "save_plan")
-    Path(save_plan).write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with _atomic_artifact(save_plan) as staged, _open_staged_writer(staged) as stream:
+        stream.write((json.dumps(plan, indent=2, sort_keys=True) + "\n").encode("utf-8"))
 
 
 def _confine_artifact_path(path: str, workspace_root: Path, label: str) -> None:

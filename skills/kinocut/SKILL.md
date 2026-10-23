@@ -296,6 +296,12 @@ plan = video.composite_layers(
 
 ## Guardrails
 
+Existing outputs require explicit `overwrite=true` for MCP or `overwrite=True`
+for Python client calls; the CLI uses `kino --overwrite COMMAND ...`. Consent
+permits existing media replacement. Existing non-media files remain protected
+unless Kinocut created them in the same job, and agent config homes remain
+protected. Prefer new output paths.
+
 - Do not publish or hand off media without a quality check and human review.
 - Prefer structured Kinocut tools over raw FFmpeg shell commands; use `composite-layers`/`video_composite_layers` for ordered layer stacks instead of hand-written filtergraphs.
 - Keep output paths explicit so generated media is easy to inspect.

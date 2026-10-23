@@ -19,8 +19,11 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-KINOCUT_VERSION = "1.16.2"
-SHIM_VERSION = "1.6.17"
+KINOCUT_VERSION = "1.16.3"
+# Marketplace bundles consume the published registry release independently of
+# this checkout's product version; reconciliation must preserve canonical code.
+PLUGIN_RUNTIME_VERSION = "1.16.2"
+SHIM_VERSION = "1.6.18"
 
 
 def _toml(path: Path) -> dict:
@@ -437,7 +440,7 @@ def test_integration_smoke_adds_nonpublishing_exact_head_onboarding_job() -> Non
 
 def test_vendor_plugin_bundle_versions_and_pinned_runtime_are_consistent() -> None:
     """The plugin bundle can advance without republishing its pinned runtime."""
-    version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    version = PLUGIN_RUNTIME_VERSION
     plugin = ROOT / "plugins" / "kinocut"
     plugin_version = json.loads((plugin / "plugin.json").read_text(encoding="utf-8"))["version"]
     assert re.fullmatch(r"\d+\.\d+\.\d+", plugin_version)
@@ -473,12 +476,12 @@ def test_claude_plugin_plain_pinned_launcher_has_a_complete_public_registry_lock
     lock = _toml(plugin / "uv.lock")
     server = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"]["kinocut"]
 
-    assert project["dependencies"] == [f"kinocut=={KINOCUT_VERSION}"]
+    assert project["dependencies"] == [f"kinocut=={PLUGIN_RUNTIME_VERSION}"]
     assert project["requires-python"] == lock["requires-python"] == ">=3.11"
     assert project["version"] == json.loads((plugin / ".claude-plugin/plugin.json").read_text())["version"]
-    assert server == {"command": "uvx", "args": [f"kinocut=={KINOCUT_VERSION}"]}
+    assert server == {"command": "uvx", "args": [f"kinocut=={PLUGIN_RUNTIME_VERSION}"]}
     packages = {package["name"]: package for package in lock["package"]}
-    assert packages["kinocut"]["version"] == KINOCUT_VERSION
+    assert packages["kinocut"]["version"] == PLUGIN_RUNTIME_VERSION
     assert packages[project["name"]]["source"] == {"virtual": "."}
     for package in lock["package"]:
         if package["name"] == project["name"]:

@@ -5,14 +5,20 @@ from __future__ import annotations
 import json
 import os
 import re
-import tempfile
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..errors import MCPVideoError
-from ..ffmpeg_helpers import _validate_artifact_path
+from ..ffmpeg_helpers import (
+    _atomic_artifact,
+    _open_staged_writer,
+    _validate_artifact_input_path,
+    _validate_artifact_path,
+)
+from ..output_policy import with_output_policy
+from ..projectstore.receipt_ownership import durable_receipt_ownership, witness_receipt_stage
 from .models import CandidateMoment, TranscriptSegment, TranscriptWord
 
 
@@ -185,11 +191,11 @@ def _candidate_plan_paths(root: str) -> list[str]:
 
 def _resolve_plan_path(plan_path_or_dir: str) -> str:
     if os.path.isfile(plan_path_or_dir):
-        return _validate_artifact_path(plan_path_or_dir)
+        return _validate_artifact_input_path(plan_path_or_dir)
     if os.path.isdir(plan_path_or_dir):
         candidates = _candidate_plan_paths(os.path.realpath(plan_path_or_dir))
         if len(candidates) == 1:
-            return _validate_artifact_path(candidates[0])
+            return _validate_artifact_input_path(candidates[0])
         code = "shorts_plan_not_found" if not candidates else "shorts_plan_ambiguous"
         raise _plan_error(
             "The saved shorts plan lookup was not exact.",
@@ -235,6 +241,7 @@ def _safe_output_dir(plan: ShortsPlan) -> str:
     return resolved
 
 
+@with_output_policy
 def save_shorts_plan(plan: ShortsPlan) -> ShortsPlan:
     """Persist a plan atomically."""
     if not isinstance(plan, ShortsPlan):
@@ -247,16 +254,14 @@ def save_shorts_plan(plan: ShortsPlan) -> ShortsPlan:
     safe_output_dir = _safe_output_dir(plan)
     os.makedirs(safe_output_dir, exist_ok=True)
     target = os.path.join(safe_output_dir, _plan_filename(plan))
-    temp_path: str | None = None
-    try:
-        with tempfile.NamedTemporaryFile("w", dir=safe_output_dir, delete=False, encoding="utf-8") as handle:
-            temp_path = handle.name
-            handle.write(_plan_to_json(plan))
-        os.replace(temp_path, target)
-    except Exception:
-        if temp_path and os.path.lexists(temp_path):
-            os.unlink(temp_path)
-        raise
+    payload = _plan_to_json(plan).encode("utf-8")
+    with (
+        durable_receipt_ownership(Path(target)),
+        _atomic_artifact(target) as staged,
+        _open_staged_writer(staged) as stream,
+    ):
+        stream.write(payload)
+        witness_receipt_stage(target, staged)
     return plan
 
 

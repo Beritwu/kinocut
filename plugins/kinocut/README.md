@@ -5,7 +5,21 @@
 Guarded local video editing for AI agents. The plugin adds the Kinocut MCP
 server and two skills (`kinocut`, `kinocut-repurpose`) to your agent.
 
-Kinocut runs on your own machine. Your video never leaves it.
+Kinocut processes media on your own machine. Network use depends on the features
+you choose:
+
+- The first launch downloads Kinocut and its dependencies from PyPI.
+- URL inputs download the requested media.
+- Font and model-weight features download assets from GitHub when needed.
+- With `use_ai` enabled and `ANTHROPIC_API_KEY` set, AI color grading sends a
+  video frame to Anthropic.
+- Revideo dependency installation runs `npm ci`, which accesses the npm registry.
+
+Local FFmpeg editing does not upload your media. Review and approve optional
+network features before using them.
+
+Prefer new output paths. Never target credentials, session files or agent
+configuration directories.
 
 ## Requirements
 
@@ -62,6 +76,32 @@ Clients can also use the pinned configuration directly:
   }
 }
 ```
+
+## Narrowing the tool list
+
+Kinocut exposes about 200 MCP tools. A host tool allowlist reduces the schemas
+sent with each model request. For Hermes, this small inspection-and-trim set
+goes in `mcp_servers` in your Hermes `config.yaml`:
+
+```yaml
+mcp_servers:
+  kinocut:
+    command: uvx
+    args: ["kinocut==1.16.2"]
+    tools:
+      include: [search_tools, video_info, video_trim, video_thumbnail]
+      resources: false
+      prompts: false
+```
+
+Hermes uses this explicit, same-name server configuration in preference to the
+plugin's launcher. Keep its version aligned with the plugin's `mcp.json` when
+updating. Run `/reload-mcp` after changing the configuration. Use server-native
+tool names in `include`, and add the edit and quality-check tools your workflow
+needs. `search_tools` helps discover names; it does not enable excluded tools or
+hide schemas by itself. See the [Hermes MCP configuration reference](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference/).
+
+For other hosts, use their tool-filtering controls if available.
 
 ## Links
 

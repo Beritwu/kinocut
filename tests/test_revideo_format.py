@@ -14,6 +14,9 @@ from kinocut import revideo_engine
 from kinocut.errors import RevideoProjectError, RevideoRenderError, ValidationError
 from kinocut.revideo_engine import materialize_project, render, render_job
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 _FORMATS = {
     "mp4": {"format_name": "mov,mp4,m4a,3gp,3g2,mj2", "codec_name": "h264", "major_brand": "isom"},
     "webm": {"format_name": "matroska,webm", "codec_name": "vp9"},

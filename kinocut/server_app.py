@@ -89,6 +89,9 @@ def _safe_tool(fn: Any) -> Any:
             return _error_result(e)
     """
 
+    from .output_policy import with_output_policy
+
+    fn = with_output_policy(fn)
     if inspect.iscoroutinefunction(fn):
 
         @functools.wraps(fn)

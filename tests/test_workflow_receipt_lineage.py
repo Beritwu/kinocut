@@ -39,6 +39,10 @@ from kinocut.server_tools_workflow import video_workflow_render
 from kinocut.workflow import render_workflow
 from kinocut.workflow.executor import attach_receipt_lineage
 
+from kinocut.workflow.receipt import _write_receipt
+
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 EDIT_PROJECT_ID = "edit_project:" + "a" * 64
 REVISION_ID = "sha256:" + "b" * 64
 JOB_ID = "job:" + "c" * 64
@@ -248,7 +252,7 @@ def test_non_completed_receipt_raises():
 def test_persisted_enriched_receipt_is_atomic_and_additive(tmp_path):
     receipt = _completed_receipt()
     target = tmp_path / "receipt.json"
-    target.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _write_receipt(receipt, str(target))
     before = target.read_text(encoding="utf-8")
 
     attach_receipt_lineage(
@@ -317,7 +321,7 @@ def test_run_job_attaches_lineage_from_persisted_identity(tmp_path, monkeypatch)
         # mimic the real engine: persist and return the canonical receipt
         save = kwargs.get("save_receipt")
         if save:
-            Path(save).write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            _write_receipt(receipt, save)
         return dict(receipt)
 
     monkeypatch.setattr(render_runner, "render_workflow", fake_render)
@@ -360,7 +364,7 @@ def test_run_job_persisted_receipt_is_receipt_plus_lineage_not_envelope(tmp_path
         # mimic the real engine: persist and return the canonical receipt
         save = kwargs.get("save_receipt")
         if save:
-            Path(save).write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            _write_receipt(receipt, save)
         return dict(receipt)
 
     monkeypatch.setattr(render_runner, "render_workflow", fake_render)
@@ -410,7 +414,7 @@ def test_run_job_fails_when_lineage_data_malformed(tmp_path, monkeypatch):
     def fake_render(**kwargs):
         save = kwargs.get("save_receipt")
         if save:
-            Path(save).write_text(json.dumps(bad, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            _write_receipt(bad, save)
         return dict(bad)
 
     monkeypatch.setattr(render_runner, "render_workflow", fake_render)

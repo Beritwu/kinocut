@@ -27,6 +27,8 @@ import time
 
 from kinocut.projectstore._filelock import lock_exclusive
 from kinocut.errors import MCPVideoError
+from kinocut.output_policy import with_output_policy
+from .receipt_ownership import durable_receipt_ownership
 from kinocut.projectstore.render_jobs import (
     RenderJobStatus,
     get_render_job,
@@ -47,6 +49,7 @@ logger = logging.getLogger(__name__)
 __all__ = ["run_job", "start_render_job"]
 
 
+@with_output_policy
 def run_job(project: Project, job_id: str) -> str:
     """Run one job until completion or a stop request and return its outcome label.
 
@@ -65,6 +68,17 @@ def run_job(project: Project, job_id: str) -> str:
     # Production ALWAYS invokes the synchronous workflow engine with keep_intermediates=True;
     # the executor writes a valid progressive receipt after every completed stage, so a
     # killed/resumed run reads ONE authoritative resume cursor (no fixture/parallel path).
+    try:
+        with durable_receipt_ownership(receipt_path):
+            return _run_owned_job(project, job_id, receipt_path, resume_receipt)
+    except Exception as exc:
+        logger.warning("Durable receipt admission failed", exc_info=True)
+        code = exc.code if isinstance(exc, MCPVideoError) else "receipt_ownership_failed"
+        mark_failed(project, job_id, code, "Durable receipt ownership could not be verified")
+        return "failed"
+
+
+def _run_owned_job(project: Project, job_id: str, receipt_path: Path, resume_receipt: str | None) -> str:
     try:
         result = render_workflow(
             spec_path=str(job_spec_path(project, job_id)),

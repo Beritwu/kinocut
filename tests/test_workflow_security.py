@@ -97,11 +97,14 @@ def test_variant_receipt_dir_fails_closed_before_any_render(tmp_path):
 
 
 def test_artifact_writers_succeed_in_workspace(tmp_path):
+    from kinocut.output_policy import output_operation
+
     plan_target = tmp_path / "plan.json"
-    _write_plan({"receipt_kind": "workflow_plan"}, str(plan_target))
-    assert plan_target.is_file()
-    # overwriting an existing .json artifact is allowed
-    _write_plan({"receipt_kind": "workflow_plan", "v": 2}, str(plan_target))
+    with output_operation(overwrite=True):
+        _write_plan({"receipt_kind": "workflow_plan"}, str(plan_target))
+        assert plan_target.is_file()
+        # An explicit update may replace this job's own artifact.
+        _write_plan({"receipt_kind": "workflow_plan", "v": 2}, str(plan_target))
     assert json.loads(plan_target.read_text())["v"] == 2
 
     receipt_target = tmp_path / "receipt.json"

@@ -8,9 +8,10 @@ from kinocut.engine_audio_normalize import normalize_audio
 from kinocut.ffmpeg_helpers import _run_ffmpeg, _run_ffprobe_json
 
 
-pytestmark = pytest.mark.skipif(
-    not shutil.which("ffmpeg") or not shutil.which("ffprobe"), reason="FFmpeg/FFprobe required"
-)
+pytestmark = [
+    pytest.mark.skipif(not shutil.which("ffmpeg") or not shutil.which("ffprobe"), reason="FFmpeg/FFprobe required"),
+    pytest.mark.usefixtures("overwrite_consent"),
+]
 
 
 @pytest.mark.parametrize("existing", [False, True])

@@ -19,6 +19,7 @@ from typing import Any
 
 from ..errors import MCPVideoError
 from ..ffmpeg_helpers import _reset_operation_inputs, _validate_artifact_path
+from ..output_policy import with_output_policy
 from ._errors import (
     INVALID_WORKFLOW_RECEIPT,
     INVALID_WORKFLOW_SPEC,
@@ -52,6 +53,7 @@ _OUTPUT_PREFIX = "@outputs."
 _WORK_STEM_PREFIX = "mcp_video_"
 
 
+@with_output_policy
 def render_workflow(
     spec_path: str,
     resume_receipt: str | None = None,
@@ -122,7 +124,7 @@ def _render_one(
     # that execution then re-persists in place — a legitimate write-back, not a
     # self-overwrite. Reset the guard's operation scope so only the steps' own
     # declared inputs are protected.
-    _reset_operation_inputs()
+    _reset_operation_inputs(preserve_writes=True)
     hash_cache: dict[str, str | None] = {}
     work_paths: dict[str, Path] = {}  # @work name -> absolute path on disk
     sources = _build_sources(verdict, workspace_root, hash_cache)
@@ -321,6 +323,7 @@ def _make_persist_fn(
             ),
             save_receipt,
             workspace_root,
+            overwrite=True,
         )
 
     return _persist
@@ -429,7 +432,7 @@ def _finalize_render(
         status="failed" if failure is not None else "completed",
     )
     if save_receipt is not None:
-        _write_receipt(receipt, save_receipt, workspace_root)
+        _write_receipt(receipt, save_receipt, workspace_root, overwrite=True)
     if failure is not None:
         raise failure
     return receipt

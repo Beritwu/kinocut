@@ -13,6 +13,8 @@ from .paths import (
 )
 from .errors import MCPVideoError
 from .ffmpeg_helpers import (
+    _atomic_artifact,
+    _open_staged_writer,
     _get_video_duration,
     _validate_input_path,
     _validate_output_path,
@@ -153,8 +155,8 @@ def _write_srt(entries: list[Mapping], input_path: str, output_path: str | None)
         os.makedirs(srt_dir, exist_ok=True)
         srt_file = os.path.join(srt_dir, "subtitles.srt")
 
-    with open(srt_file, "w", encoding="utf-8") as f:
-        f.write(_build_srt_content(entries))
+    with _atomic_artifact(srt_file) as staged, _open_staged_writer(staged) as stream:
+        stream.write(_build_srt_content(entries).encode("utf-8"))
     return srt_file
 
 

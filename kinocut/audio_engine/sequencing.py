@@ -294,10 +294,8 @@ def audio_sequence(
             samples = _pcm_to_float(pcm)
 
         elif event_type == "preset":
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-                tmp_path = tmp.name
-
-            try:
+            with tempfile.TemporaryDirectory(prefix="kinocut-preset-") as directory:
+                tmp_path = str(Path(directory) / "preset.wav")
                 audio_preset(
                     preset=event.get("name", "ui-blip"),
                     output=tmp_path,
@@ -308,8 +306,6 @@ def audio_sequence(
                 with wave.open(tmp_path, "rb") as wav_file:
                     frames = wav_file.readframes(wav_file.getnframes())
                     samples = _pcm_to_float(frames)
-            finally:
-                Path(tmp_path).unlink(missing_ok=True)
 
         elif event_type == "whoosh":
             volume = event.get("volume", 0.3)

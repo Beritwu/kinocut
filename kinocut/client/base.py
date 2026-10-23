@@ -251,6 +251,7 @@ class ClientBase:
 
 def _guard_client_method(method_name: str, method: Any) -> Any:
     """Wrap public client methods once at class creation time."""
+    from ..output_policy import with_output_policy
 
     @wraps(method)
     def guarded_call(self: ClientBase, *args: Any, **kwargs: Any) -> Any:
@@ -263,4 +264,4 @@ def _guard_client_method(method_name: str, method: Any) -> Any:
         return result
 
     guarded_call._mcp_video_guarded = True
-    return guarded_call
+    return with_output_policy(guarded_call)

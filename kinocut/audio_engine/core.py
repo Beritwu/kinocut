@@ -11,7 +11,7 @@ import math
 import wave
 
 from kinocut.errors import MCPVideoError
-from kinocut.ffmpeg_helpers import _validate_output_path
+from kinocut.ffmpeg_helpers import _atomic_output, _open_staged_writer
 
 # ---------------------------------------------------------------------------
 # Optional numpy import with graceful fallback
@@ -747,8 +747,11 @@ else:
         channels: int = DEFAULT_CHANNELS,
     ) -> str:
         """Write PCM data to a WAV file."""
-        _validate_output_path(output_path)
-        with wave.open(output_path, "wb") as wav_file:
+        with (
+            _atomic_output(output_path) as staged,
+            _open_staged_writer(staged) as stream,
+            wave.open(stream, "wb") as wav_file,
+        ):
             wav_file.setnchannels(channels)
             wav_file.setsampwidth(DEFAULT_SAMPLE_WIDTH)
             wav_file.setframerate(sample_rate)

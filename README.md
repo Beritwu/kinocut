@@ -119,7 +119,7 @@ video.release_checkpoint(short.output_path)  # thumbnail + quality gate before y
 | --- | --- | --- |
 | **PyPI / npm checkpoint** | **[1.16.2](https://pypi.org/project/kinocut/1.16.2/)** (2026-10-21) | Last recorded publication checkpoint; consult the registries for the latest version. Install with `pip install kinocut`. |
 | **GitHub latest release / MCP Registry** | **1.16.2** | GitHub release `v1.16.2` and the official MCP Registry (`tech.kyanitelabs/kinocut`, local `uvx kinocut` stdio package) report 1.16.2 (verified 2026-10-21). Final owner acceptance and fleet rollout remain separate. |
-| **This source version** | **1.16.2** · **203 MCP / 177 CLI** | Matches the published package. |
+| **This source version** | **1.16.3 candidate** · **203 MCP / 177 CLI** | Prepared development candidate; publication remains pending. |
 | **Next public release** | **TBD** | Human residuals (directories, launch posts) stay gated; further bumps need a new go-ahead. |
 
 Install from PyPI for the stable package, including the optional object-matte extra. Clone `master` when you want local development changes beyond the published package; see [docs/PRODUCT_MATTE.md](docs/PRODUCT_MATTE.md) for the published object-matte workflow.
@@ -173,6 +173,8 @@ Published quality and plain-file audio contracts are documented in
 for future local changes beyond the published package.
 
 ## Beyond 1.16.2 (draft / gated)
+
+The prepared compatibility candidate `mcp-video==1.6.18` pins `kinocut==1.16.3`; neither candidate is published yet.
 
 The published compatibility installer `mcp-video==1.6.17` pins `kinocut==1.16.2`. Fleet upgrade and running-process verification instructions are in [docs/FLEET_UPGRADE.md](docs/FLEET_UPGRADE.md).
 

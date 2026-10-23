@@ -10,6 +10,7 @@ from .errors import MCPVideoError
 from .defaults import DEFAULT_FONT_DOWNLOAD_DEADLINE
 from .limits import MAX_FONT_DOWNLOAD_BYTES, MAX_FONT_IDENTIFIER_CHARACTERS, MAX_FONT_DOWNLOAD_DIAGNOSTIC_BYTES
 from .atomic_publication import anchored_output
+from .ffmpeg_helpers import _validate_artifact_path
 from .staged_writers import open_staged_writer
 from .bounded_process import run_bounded
 from .font_download_worker import _GOOGLE_FONT_URLS, DOWNLOAD_INVALID, DOWNLOAD_OVER_LIMIT
@@ -52,7 +53,7 @@ def resolve_font(font_name: str) -> str:
     if os.path.isfile(local_path) and _cached_font_valid(local_path):
         return local_path
 
-    with anchored_output(local_path, os.path.abspath) as staged:
+    with anchored_output(local_path, _validate_artifact_path) as staged:
         _download_font(normalized, staged)
     return local_path
 

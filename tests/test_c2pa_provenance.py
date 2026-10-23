@@ -14,6 +14,9 @@ import pytest
 from mcp_video.errors import MCPVideoError
 from mcp_video.models import EditResult
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 _DEFAULT_VERIFY_PAYLOAD = object()
 
@@ -643,6 +646,7 @@ def test_cli_export_json_can_sign_with_fake_c2patool(sample_video, tmp_path):
             sys.executable,
             "-m",
             "mcp_video",
+            "--overwrite",
             "--format",
             "json",
             "export",

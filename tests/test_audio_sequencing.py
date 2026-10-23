@@ -225,6 +225,8 @@ class TestAudioCompose:
         real_wave_open = wave.open
 
         def python_311_wave_open(path, mode="rb"):
+            if not isinstance(path, (str, bytes, Path)):
+                return real_wave_open(path, mode)
             candidate = Path(path)
             if mode == "rb" and candidate == source:
                 data = candidate.read_bytes()

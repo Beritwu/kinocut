@@ -4,6 +4,17 @@ kino's development tip exposes **203 registered MCP tools / 177 CLI commands** a
 
 ---
 
+## Output overwrite policy
+
+MCP calls accept a strict boolean `overwrite` parameter, defaulting to `false`.
+An existing output requires an explicit `overwrite=true`. This allows replacing
+existing media; pre-existing JSON, text, CSV, TypeScript and other non-media files
+stay protected. Non-media output can only be replaced when Kinocut created the
+current file in the same job, with consent. Hermes and other agent configuration
+homes remain protected even with consent. Source/output alias guards still apply.
+Prefer a new output path. Python client calls accept the same `overwrite=True`
+keyword; the CLI uses `kino --overwrite COMMAND ...`.
+
 ## Project-backed Inspection (3 tools)
 
 These operations share one adapter with the Python client and CLI. Only ingest accepts a
