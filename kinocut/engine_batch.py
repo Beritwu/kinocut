@@ -6,6 +6,7 @@ import hashlib
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextvars import copy_context
 from typing import Any
 
 from .engine_audio_normalize import normalize_audio
@@ -93,7 +94,7 @@ def video_batch(
         indexed: list[dict[str, Any] | None] = [None] * len(inputs)
         idx_map = {inp: i for i, inp in enumerate(inputs)}
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = {pool.submit(_process_one, inp): inp for inp in inputs}
+            futures = {pool.submit(copy_context().run, _process_one, inp): inp for inp in inputs}
             for future in as_completed(futures):
                 orig = futures[future]
                 indexed[idx_map[orig]] = future.result()

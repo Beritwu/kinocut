@@ -15,6 +15,9 @@ from kinocut.ffmpeg_helpers import _atomic_output, _reset_operation_inputs, _val
 from kinocut.ffmpeg_progress import run_progress
 from kinocut.limits import FFMPEG_PROGRESS_STDERR_BYTES
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 @pytest.mark.skipif(os.name != "posix" or not shutil.which("ffmpeg"), reason="POSIX real FFmpeg")
 @pytest.mark.parametrize("runner", ["_run_ffmpeg", "_run_command", "_run_ffmpeg_with_progress"])

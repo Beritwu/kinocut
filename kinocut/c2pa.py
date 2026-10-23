@@ -10,7 +10,7 @@ from typing import Any
 
 from .defaults import DEFAULT_C2PA_TIMEOUT
 from .errors import C2PASigningError, C2PAToolNotFoundError, C2PAVerificationError, MCPVideoError
-from .ffmpeg_helpers import _atomic_output, _validate_artifact_path, _validate_input_path
+from .ffmpeg_helpers import _atomic_output, _validate_artifact_input_path, _validate_input_path
 
 
 _UNTRUSTED_SIGNING_CREDENTIAL_STATUS = "signingCredential.untrusted"
@@ -60,7 +60,7 @@ def _validate_manifest_path(path: str) -> str:
             error_type="validation_error",
             code="invalid_c2pa_manifest",
         )
-    _validate_artifact_path(path)
+    _validate_artifact_input_path(path)
     if not os.path.isfile(path):
         raise MCPVideoError(
             f"C2PA manifest file not found: {path}",

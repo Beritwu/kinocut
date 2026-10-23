@@ -97,9 +97,10 @@ def test_validate_output_path_rejects_parent_relative_paths():
         assert "traversal" in str(e).lower()
 
 
-def test_validate_output_path_accepts_safe_paths():
+def test_validate_output_path_accepts_safe_paths(tmp_path, monkeypatch):
     from mcp_video.ffmpeg_helpers import _validate_output_path
 
+    monkeypatch.chdir(tmp_path)
     assert _validate_output_path("output.mp4") == "output.mp4"
     assert _validate_output_path("/tmp/output.mp4") == "/tmp/output.mp4"
     assert _validate_output_path("foo/bar/baz.mp4") == "foo/bar/baz.mp4"

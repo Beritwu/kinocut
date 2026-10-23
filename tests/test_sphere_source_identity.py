@@ -12,6 +12,9 @@ from kinocut.ffmpeg_helpers import _reset_operation_inputs
 from kinocut.te import sphere_director as director, sphere_probe, sphere_render
 from tests.test_sphere_plan_adversarial import _plan
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 @pytest.fixture(autouse=True)
 def isolated_operation():
@@ -105,8 +108,13 @@ def test_hash_cache_invalidates_equal_size_equal_mtime_replacement(tmp_path):
     assert sphere_probe._file_sha256(str(source)) != first
 
 
-def test_source_mutation_during_geometry_probe_is_not_combined_with_old_hash(tmp_path, monkeypatch):
+@pytest.mark.parametrize("same_cache_key", [False, True])
+def test_source_mutation_during_geometry_probe_is_not_combined_with_old_hash(tmp_path, monkeypatch, same_cache_key):
     source, _ = _source_plan(tmp_path)
+    if same_cache_key:
+        # Rapid equal-size writes can share filesystem timestamps on CI.
+        key = sphere_probe._cache_key(str(source))
+        monkeypatch.setattr(sphere_probe, "_cache_key", lambda path: key)
 
     def geometry(path):
         Path(path).write_bytes(b"source-two")

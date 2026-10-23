@@ -9,6 +9,9 @@ from kinocut import engine_edit, engine_speed, ffmpeg_helpers
 from kinocut.engine_probe import probe
 from kinocut.errors import InputFileError, MCPVideoError, ProcessingError
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 @pytest.fixture(params=[engine_edit, engine_speed], ids=["trim", "speed"])
 def writer(request):

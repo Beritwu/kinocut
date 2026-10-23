@@ -13,6 +13,9 @@ from kinocut.errors import InputFileError, MCPVideoError, ProcessingError
 from kinocut.ffmpeg_helpers import _reset_operation_inputs
 from kinocut.limits import MAX_RESOLUTION
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 @pytest.fixture(autouse=True)
 def isolated_probe_operation():

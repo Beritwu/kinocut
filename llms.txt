@@ -16,7 +16,7 @@ Kinocut is an Apache-2.0 open-source Model Context Protocol (MCP) server that gi
 - **Last verified publication checkpoint:** 1.16.2 (2026-10-21); consult the official registries for the latest version.
 - **Last-updated:** 2026-10-21
 - **Published surface (1.16.2):** 203 MCP tools / 177 CLI commands
-- **Development checkout:** 1.16.2, 203 MCP tools / 177 CLI commands; matches the published maintenance release.
+- **Development checkout:** 1.16.3 candidate, 203 MCP tools / 177 CLI commands; publication remains pending.
 - **Runtime:** Python 3.11+, FFmpeg on PATH; optional extras for Whisper/upscale/etc.
 - **MCP transport:** stdio
 - **MCP Registry id:** `tech.kyanitelabs/kinocut`
@@ -71,8 +71,8 @@ Published identity is maintained in `docs/public_claims.json`.
 - Extended repository agent guide: https://github.com/KyaniteLabs/kinocut/blob/master/docs/llms-full.txt (source companion; website publication is separate)
 - Product: https://kinocut.dev/
 - Site llms.txt: https://kinocut.dev/llms.txt
-- GitHub (canonical code, issues, PRs, CI, and releases): https://github.com/KyaniteLabs/kinocut
-- Forgejo (downstream mirror; automated sync cutover pending verification): https://git.kyanitelabs.tech/KyaniteLabs/kinocut
+- Forgejo (canonical source): https://git.kyanitelabs.tech/KyaniteLabs/kinocut
+- GitHub (public mirror, collaboration, CI and releases): https://github.com/KyaniteLabs/kinocut
 - PyPI: https://pypi.org/project/kinocut/
 - MCP Registry: https://registry.modelcontextprotocol.io/v0/servers/tech.kyanitelabs%2Fkinocut/versions/latest
 - Tool reference: https://github.com/KyaniteLabs/kinocut/blob/master/docs/TOOLS.md
@@ -161,3 +161,5 @@ video editing MCP server, guardrailed video editing MCP server, AI agent video e
 - Directories: docs/DIRECTORY_STATUS.md
 - Enterprise: docs/ENTERPRISE.md
 - Rename: docs/RENAME.md
+
+Prepared development candidate: 1.6.18 shim → kinocut 1.16.3 (not yet published).

@@ -164,7 +164,7 @@ def test_client_methods_match_public_argument_names() -> None:
         ),
     }
     for name, parameters in expected.items():
-        assert tuple(inspect.signature(getattr(Client, name)).parameters)[1:] == parameters
+        assert tuple(inspect.signature(getattr(Client, name)).parameters)[1:] == (*parameters, "overwrite")
 
 
 def test_cli_parser_contract() -> None:

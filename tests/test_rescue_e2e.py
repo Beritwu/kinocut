@@ -22,6 +22,8 @@ from tests.rescue_fixtures import (
     make_unsupported_codec_fixture,
 )
 
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def _sha256(path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()

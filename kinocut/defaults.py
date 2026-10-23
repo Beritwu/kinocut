@@ -9,6 +9,8 @@ from __future__ import annotations
 # Re-export encoding defaults from limits for backward compatibility
 from .limits import DEFAULT_AI_TIMEOUT, DEFAULT_CRF, DEFAULT_FFMPEG_TIMEOUT, DEFAULT_PRESET  # noqa: F401
 
+DEFAULT_OVERWRITE = False
+
 # Quality presets
 DEFAULT_QUALITY = "high"
 DEFAULT_FORMAT = "mp4"

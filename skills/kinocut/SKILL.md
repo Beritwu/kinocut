@@ -296,6 +296,18 @@ plan = video.composite_layers(
 
 ## Guardrails
 
+Existing outputs require explicit `overwrite=true` for MCP or `overwrite=True`
+for Python client calls; the CLI uses `kino --overwrite COMMAND ...`. Consent
+permits existing media replacement. Existing non-media files remain protected
+unless Kinocut created them in the same job, and agent config homes remain
+protected. Prefer new output paths.
+
+Use one writer per output directory; these guards do not protect against
+concurrent replacement by another process. Finish old workers before upgrading.
+Durable jobs require hard-link ownership evidence; keep hidden ownership
+directories with their jobs and start new jobs for legacy receipts without it.
+See `../../docs/TOOLS.md#upgrading-existing-jobs` before moving or resuming jobs.
+
 - Do not publish or hand off media without a quality check and human review.
 - Prefer structured Kinocut tools over raw FFmpeg shell commands; use `composite-layers`/`video_composite_layers` for ordered layer stacks instead of hand-written filtergraphs.
 - Keep output paths explicit so generated media is easy to inspect.

@@ -371,7 +371,7 @@ class TestParameterBounds:
             audio_synthesize(str(output), effects={"bitcrush": 0.5})
         assert not output.exists()
 
-    def test_audio_valid_bounds(self) -> None:
+    def test_audio_valid_bounds(self, tmp_path) -> None:
         """Valid bounds at edges are accepted."""
         from mcp_video.audio_engine import audio_synthesize
         from mcp_video.limits import MIN_FREQUENCY
@@ -381,7 +381,7 @@ class TestParameterBounds:
         # by checking the function doesn't raise at boundary values
         with contextlib.suppress(ProcessingError, FileNotFoundError, OSError):
             audio_synthesize(
-                "/tmp/test.wav",
+                str(tmp_path / "test.wav"),
                 frequency=MIN_FREQUENCY,
                 duration=0.01,
                 volume=0.0,

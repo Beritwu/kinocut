@@ -9,27 +9,12 @@ This is a pre-kernel, path-based v1 skill. It guides an agent to produce a good 
 clip from one local video using only shipped Kinocut tools. Do not invent commands,
 providers, kernels, schedulers, uploaders, or publishing steps.
 
-## Install
+## Plugin runtime
 
-From a checkout of this repository, install the skill into a Claude Code-compatible
-host that discovers local path skills:
-
-```bash
-mkdir -p .claude/skills && cp -R skills/kinocut-repurpose .claude/skills/kinocut-repurpose
-```
-
-Configure the Kinocut MCP server separately when MCP tools are available:
-
-```bash
-claude mcp add kinocut -- uvx --from kinocut kino
-```
-
-For CLI-only hosts, install and verify Kinocut:
-
-```bash
-pip install kinocut
-kino doctor
-```
+The host starts the pinned Kinocut server from this plugin's `mcp.json`.
+Use its MCP tools directly. Do not install another copy, copy skills into
+another host, or change another tool's configuration. CLI examples below apply
+only when `kino` is already available; otherwise use the equivalent MCP tools.
 
 ## Current Tools
 

@@ -197,6 +197,8 @@ def _read_scene_source(scene_source: str | Path | None) -> bytes | None:
 
 
 def _validate_materialize_destination(dest: Path) -> None:
+    from .ffmpeg_helpers import _validate_artifact_location
+
     try:
         if dest.is_symlink():
             raise RevideoProjectError(str(dest), "destination must not be a symlink")
@@ -208,6 +210,7 @@ def _validate_materialize_destination(dest: Path) -> None:
         raise
     except OSError as exc:
         raise RevideoProjectError(str(dest), f"destination could not be inspected ({type(exc).__name__})") from exc
+    _validate_artifact_location(str(dest), "Revideo project directory")
 
 
 def materialize_project(dest: str | Path, job: dict[str, Any], scene_source: str | Path | None = None) -> Path:

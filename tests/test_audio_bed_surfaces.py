@@ -60,7 +60,7 @@ def test_public_signatures_and_registration():
 
     for fn in (video_audio_bed, Client.audio_bed):
         names = set(inspect.signature(fn).parameters) - {"self"}
-        assert {"voice_source", "music_path", "output_path", *APPROVED} == names
+        assert {"voice_source", "music_path", "output_path", "overwrite", *APPROVED} == names
         assert not names & FORBIDDEN
     assert "video_audio_bed" in {tool.name for tool in asyncio.run(mcp.list_tools())}
 

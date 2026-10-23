@@ -112,7 +112,7 @@ def test_elapsed_deadline_rejects_before_publication(cache, monkeypatch):
     assert not list(cache.iterdir())
 
 
-def test_corrupt_old_cache_is_replaced_only_after_success(cache, monkeypatch):
+def test_foreign_corrupt_cache_is_never_replaced(cache, monkeypatch):
     cache.mkdir()
     target = cache / "roboto.ttf"
     target.write_bytes(b"old interrupted download")
@@ -121,7 +121,9 @@ def test_corrupt_old_cache_is_replaced_only_after_success(cache, monkeypatch):
         font_manager.resolve_font("roboto")
     assert target.read_bytes() == b"old interrupted download"
     network(monkeypatch, Response(length=str(len(FONT))))
-    assert Path(font_manager.resolve_font("roboto")).read_bytes() == FONT
+    with pytest.raises(MCPVideoError, match="Refusing to overwrite"):
+        font_manager.resolve_font("roboto")
+    assert target.read_bytes() == b"old interrupted download"
 
 
 def test_cache_symlink_never_writes_referent(cache, tmp_path, monkeypatch):

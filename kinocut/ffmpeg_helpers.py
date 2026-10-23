@@ -44,21 +44,37 @@ _BLOCKED_OUTPUT_PREFIXES = (
     "/var/log",
     "/var/root",
 )
-_SENSITIVE_HOME_PARTS = {".aws", ".azure", ".config", ".docker", ".gnupg", ".kube", ".ssh"}
+_SENSITIVE_HOME_PARTS = {
+    ".aws",
+    ".azure",
+    ".config",
+    ".docker",
+    ".gnupg",
+    ".kube",
+    ".ssh",
+    ".hermes",
+    ".claude",
+    ".codex",
+    ".cursor",
+    ".gemini",
+    ".kimi",
+    ".opencode",
+    ".openclaw",
+    ".clawdbot",
+    ".grok",
+    ".zcode",
+    ".continue",
+}
 _SAFE_EXISTING_OUTPUT_SUFFIXES = frozenset(
     {
         ".aac",
         ".aif",
         ".aiff",
-        ".ass",
         ".avi",
-        ".csv",
         ".flac",
         ".gif",
         ".jpg",
         ".jpeg",
-        ".json",
-        ".m3u8",
         ".m4a",
         ".m4v",
         ".mkv",
@@ -68,10 +84,6 @@ _SAFE_EXISTING_OUTPUT_SUFFIXES = frozenset(
         ".ogg",
         ".opus",
         ".png",
-        ".srt",
-        ".ts",
-        ".txt",
-        ".vtt",
         ".wav",
         ".webm",
         ".webp",
@@ -100,29 +112,47 @@ _SAFE_EXISTING_OUTPUT_SUFFIXES = frozenset(
 # therefore *not* recorded as an input: re-rendering over an
 # earlier output stays legal, while destroying a declared input stays blocked.
 _OPERATION_INPUTS: ContextVar[frozenset[str]] = ContextVar("kinocut_operation_inputs", default=frozenset())
-_OPERATION_WRITES: ContextVar[frozenset[str]] = ContextVar("kinocut_operation_writes", default=frozenset())
+_OPERATION_WRITES: ContextVar[dict[str, tuple[int, int]] | None] = ContextVar("kinocut_operation_writes", default=None)
+
+
+def _owns_operation_output(path: str) -> bool:
+    """A filename alone does not prove that this job created the current file."""
+    expected = (_OPERATION_WRITES.get() or {}).get(os.path.realpath(path))
+    if expected is None:
+        return False
+    try:
+        current = os.stat(path, follow_symlinks=False)
+    except OSError:
+        return False
+    return expected == (current.st_dev, current.st_ino)
 
 
 def _record_operation_input(resolved: str) -> None:
     """Record a validated input path for the current operation scope."""
-    if resolved in _OPERATION_WRITES.get():
+    if _owns_operation_output(resolved):
         return
     _OPERATION_INPUTS.set(_OPERATION_INPUTS.get() | {resolved})
 
 
 def _note_operation_write(resolved: str) -> None:
     """Record an owned stage or successfully written artifact, never a precheck."""
-    _OPERATION_WRITES.set(_OPERATION_WRITES.get() | {os.path.realpath(resolved)})
+    current = os.stat(resolved, follow_symlinks=False)
+    writes = _OPERATION_WRITES.get()
+    if writes is None:
+        writes = {}
+        _OPERATION_WRITES.set(writes)
+    writes[os.path.realpath(resolved)] = (current.st_dev, current.st_ino)
 
 
-def _reset_operation_inputs() -> None:
+def _reset_operation_inputs(*, preserve_writes: bool = False) -> None:
     """Start a fresh operation scope for the self-overwrite guard.
 
     MCP tool calls never need this (context isolation scopes them already);
     long-running direct callers may use it between distinct operations.
     """
     _OPERATION_INPUTS.set(frozenset())
-    _OPERATION_WRITES.set(frozenset())
+    if not preserve_writes:
+        _OPERATION_WRITES.set({})
 
 
 def _reject_self_overwrite(path: str) -> None:
@@ -198,31 +228,14 @@ def _validate_project_path(path: str) -> str:
     return resolved
 
 
-_SAFE_EXISTING_ARTIFACT_SUFFIXES = frozenset({".json"})
-
-
-def _validate_write_path(
-    path: str,
-    *,
-    allowed_existing_suffixes: frozenset[str],
-    label: str,
-) -> str:
-    """Shared write-path guard used by output-media and artifact writers.
-
-    Blocks null bytes, ``..`` traversal, symlink targets, system directories,
-    sensitive home dotfiles, and targets that resolve to a path already read
-    as an input of the current operation (self-overwrite). When the target
-    already exists, refuses to overwrite it unless its suffix is in
-    ``allowed_existing_suffixes`` (media suffixes for renders; ``.json`` only
-    for provenance artifacts).
-    """
+def _validate_artifact_location(path: str, label: str) -> str:
+    """Reject unsafe locations for outputs and structured artifact inputs."""
     if "\x00" in path:
         raise MCPVideoError(
             f"{label} contains null bytes: {path!r}",
             error_type="validation_error",
             code="invalid_output_path",
         )
-    _reject_self_overwrite(path)
     raw_parts = re.split(r"[\\/]+", path)
     if ".." in raw_parts:
         raise MCPVideoError(
@@ -245,6 +258,17 @@ def _validate_write_path(
             code="unsafe_path",
         )
 
+    for variable in ("HERMES_HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "XDG_CONFIG_HOME"):
+        configured = os.environ.get(variable)
+        if configured:
+            config_home = os.path.realpath(os.path.expanduser(configured))
+            if resolved == config_home or resolved.startswith(config_home + os.sep):
+                raise MCPVideoError(
+                    f"{label} targets a configured agent or application home: {path}",
+                    error_type="validation_error",
+                    code="unsafe_path",
+                )
+
     home = os.path.realpath(os.path.expanduser("~"))
     if resolved == home or resolved.startswith(home + os.sep):
         rel_parts = set(os.path.relpath(resolved, home).split(os.sep))
@@ -255,18 +279,49 @@ def _validate_write_path(
                 code="unsafe_path",
             )
 
+    return resolved
+
+
+def _validate_write_path(
+    path: str,
+    *,
+    allowed_existing_suffixes: frozenset[str],
+    label: str,
+) -> str:
+    """Require consent and job ownership before replacing non-media outputs."""
+    if "\x00" not in path:
+        _reject_self_overwrite(path)
+    resolved = _validate_artifact_location(path, label)
     if os.path.isdir(resolved):
         return path
 
     if os.path.exists(resolved):
+        from .output_policy import _OVERWRITE
+        from .staged_writers import is_staged_output
+
+        if is_staged_output(path) and _owns_operation_output(resolved):
+            return path
         suffix = os.path.splitext(resolved)[1].lower()
-        if suffix not in allowed_existing_suffixes:
+        permitted_media = suffix in allowed_existing_suffixes and suffix in _SAFE_EXISTING_OUTPUT_SUFFIXES
+        if not permitted_media and not _owns_operation_output(resolved):
             raise MCPVideoError(
                 f"Refusing to overwrite existing file at {label.lower()}: {path}",
                 error_type="validation_error",
                 code="unsafe_path",
             )
+        if _OVERWRITE.get() is not True:
+            raise MCPVideoError(
+                f"{label} already exists; pass overwrite=true to replace permitted outputs: {path}",
+                error_type="validation_error",
+                code="output_exists",
+            )
     return path
+
+
+def _validate_artifact_input_path(path: str) -> str:
+    """Read a saved artifact without granting permission to overwrite it."""
+    _validate_artifact_location(path, "Artifact path")
+    return _validate_input_path(path, record_operation=False)
 
 
 def _validate_output_path(path: str) -> str:
@@ -289,10 +344,9 @@ def _validate_artifact_path(path: str) -> str:
 
     Same traversal / symlink / system-dir / sensitive-dotfile guard as
     ``_validate_output_path`` but stricter on overwrite: a workflow plan or
-    receipt may only overwrite an existing ``.json`` artifact, never a media
-    file or any other on-disk file.
+    receipt may only replace a file created by this job, with explicit consent.
     """
-    return _validate_write_path(path, allowed_existing_suffixes=_SAFE_EXISTING_ARTIFACT_SUFFIXES, label="Artifact path")
+    return _validate_write_path(path, allowed_existing_suffixes=frozenset(), label="Artifact path")
 
 
 @contextlib.contextmanager

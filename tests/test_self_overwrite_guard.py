@@ -20,6 +20,7 @@ from mcp_video.ffmpeg_helpers import (
     _validate_input_path,
     _validate_output_path,
 )
+from kinocut.output_policy import output_operation
 
 
 @pytest.fixture(autouse=True)
@@ -82,8 +83,11 @@ class TestValidateWritePathAliasGuard:
 
         _validate_input_path(str(src))
 
-        # Media-suffix overwrite of an unrelated file remains permitted.
-        assert _validate_output_path(str(out)) == str(out)
+        # An unrelated media target still needs explicit overwrite consent.
+        with pytest.raises(MCPVideoError, match="overwrite=true"):
+            _validate_output_path(str(out))
+        with output_operation(True):
+            assert _validate_output_path(str(out)) == str(out)
 
     def test_scope_does_not_leak_between_contexts(self, tmp_path):
         # Each MCP tool call runs in its own context copy; an input read in
@@ -98,7 +102,8 @@ class TestValidateWritePathAliasGuard:
 
         # Fresh context: writing to src now is a plain overwrite decision,
         # not an alias rejection.
-        assert _validate_output_path(str(src)) == str(src)
+        with output_operation(True):
+            assert _validate_output_path(str(src)) == str(src)
 
 
 class TestSelfOverwriteRegression:

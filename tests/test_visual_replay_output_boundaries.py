@@ -12,6 +12,9 @@ from kinocut.object_matte import api as matte
 from kinocut.visual_intelligence import reframe_render
 from tests.test_reframe_render_receipts import _plan, _source
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 @pytest.fixture(autouse=True)
 def isolated_operation():

@@ -9,6 +9,9 @@ from kinocut import engine_convert, ffmpeg_helpers
 from kinocut.engine_probe import probe
 from kinocut.errors import InputFileError, MCPVideoError, ProcessingError
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def _destination(tmp_path, sample_video, existing):
     output = tmp_path / "converted.mp4"

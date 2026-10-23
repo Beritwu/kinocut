@@ -13,6 +13,7 @@ import pytest
 from kinocut.ai_engine import silence
 from kinocut.defaults import DEFAULT_FFMPEG_TIMEOUT, DEFAULT_SILENCE_DURATION_TOLERANCE_SECONDS
 from kinocut.errors import MCPVideoError, ProcessingError
+from kinocut.output_policy import output_operation
 
 
 def _run_media(command: list[str]) -> subprocess.CompletedProcess[str]:
@@ -217,7 +218,7 @@ def test_invalid_exit_zero_stage_is_never_promoted(tmp_path, monkeypatch, existi
         Path(staged).write_bytes(b"not media")
 
     monkeypatch.setattr(silence, "_render_keep_segments", write_invalid)
-    with pytest.raises(ProcessingError, match="staged output could not be probed"):
+    with output_operation(overwrite=True), pytest.raises(ProcessingError, match="staged output could not be probed"):
         silence.ai_remove_silence(str(source), str(output))
     if existing_destination:
         assert output.read_bytes() == sentinel
@@ -247,7 +248,7 @@ def test_decode_failure_preserves_existing_destination(tmp_path, monkeypatch) ->
     monkeypatch.setattr(
         silence, "_run_command", lambda *_args, **_kwargs: (_ for _ in ()).throw(ProcessingError("decode", 1, "failed"))
     )
-    with pytest.raises(ProcessingError, match="failed full media decode"):
+    with output_operation(overwrite=True), pytest.raises(ProcessingError, match="failed full media decode"):
         silence.ai_remove_silence(str(source), str(output))
     assert output.read_bytes() == b"sentinel"
     assert source.read_bytes() == b"source"
@@ -271,7 +272,7 @@ def test_render_failure_never_promotes(tmp_path, monkeypatch, returncode) -> Non
         raise ProcessingError("ffmpeg", returncode, reason)
 
     monkeypatch.setattr(silence, "_run_command", fail_command)
-    with pytest.raises(ProcessingError):
+    with output_operation(overwrite=True), pytest.raises(ProcessingError):
         silence.ai_remove_silence(str(source), str(output))
     assert output.read_bytes() == b"sentinel"
     assert source.read_bytes() == b"source"

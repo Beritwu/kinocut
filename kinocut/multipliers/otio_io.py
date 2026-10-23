@@ -8,7 +8,7 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 from kinocut.errors import MCPVideoError
-from kinocut.ffmpeg_helpers import _validate_artifact_path, _validate_input_path
+from kinocut.ffmpeg_helpers import _atomic_artifact, _open_staged_writer, _validate_input_path
 from kinocut.timeline_ir import compile_ir_to_dag, parse_timeline_ir
 
 
@@ -48,9 +48,9 @@ def export_otio_json(timeline: dict[str, Any], output_path: str) -> dict[str, An
             "kinocut_dag_nodes": len(dag.nodes) if hasattr(dag, "nodes") else None,
         },
     }
-    path = Path(_validate_artifact_path(output_path))
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    path = Path(output_path)
+    with _atomic_artifact(output_path) as staged, _open_staged_writer(staged) as stream:
+        stream.write((json.dumps(doc, indent=2) + "\n").encode("utf-8"))
     return {
         "artifact_kind": "otio_export",
         "path": str(path.resolve()),

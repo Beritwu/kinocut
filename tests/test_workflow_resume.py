@@ -179,7 +179,7 @@ def test_resume_tampered_intermediate_reruns_producing_step(tmp_path, sample_vid
     kept = ws / fail["cleanup_manifest"]["intermediates"][0]  # trim's @work output
     kept.write_bytes(b"corrupted intermediate")  # tamper the persisted intermediate
 
-    resume = render_workflow(spec_path, resume_receipt=str(ws / "fail.json"))
+    resume = render_workflow(spec_path, resume_receipt=str(ws / "fail.json"), overwrite=True)
 
     # trim's recorded output_hash no longer matches -> trim re-runs (and everything after).
     assert calls["trim"] == 2, "tampered intermediate forces its producing step to re-run"

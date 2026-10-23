@@ -25,6 +25,9 @@ from kinocut.revideo_engine import (
     render_job,
 )
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def _fake_probe(**changes) -> dict:
     stream = {

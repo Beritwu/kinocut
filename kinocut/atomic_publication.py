@@ -106,24 +106,38 @@ def anchored_output(path: str, validate: Callable[[str], str]) -> Iterator[str]:
         identity = os.fstat(fd)
         anchor.check()
         temporary = os.path.join(directory, stage)
-        validate(temporary)
         from .ffmpeg_helpers import _note_operation_write
 
         _note_operation_write(temporary)
         with owned_stage(temporary, fd):
+            validate(temporary)
             yield temporary
+            anchor.check()
+            validate(temporary)
         anchor.check()
-        validate(temporary)
         validate(final)
         current = os.stat(anchor.name(stage), follow_symlinks=False, **anchor.options())
         if not stat.S_ISREG(current.st_mode) or (current.st_dev, current.st_ino) != (identity.st_dev, identity.st_ino):
             raise _unsafe("Output staging file changed during publication")
-        if anchor.fd is not None:
-            os.replace(stage, basename, src_dir_fd=anchor.fd, dst_dir_fd=anchor.fd)
-        else:
+        from .output_policy import _OVERWRITE
+
+        if anchor.fd is None:
             os.close(fd)
             fd = None
-            os.replace(temporary, final)
+        if _OVERWRITE.get() is True:
+            if anchor.fd is not None:
+                os.replace(stage, basename, src_dir_fd=anchor.fd, dst_dir_fd=anchor.fd)
+            else:
+                os.replace(temporary, final)
+        else:
+            # link() creates the destination exclusively: a target planted after
+            # validation must survive, even if it appeared during rendering.
+            os.link(
+                anchor.name(stage),
+                anchor.name(basename),
+                **({"src_dir_fd": anchor.fd, "dst_dir_fd": anchor.fd} if anchor.fd is not None else {}),
+                follow_symlinks=False,
+            )
         published = True
         try:
             anchor.check()

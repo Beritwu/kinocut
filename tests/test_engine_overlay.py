@@ -4,6 +4,11 @@ from types import SimpleNamespace
 
 from mcp_video.engine_overlay import overlay_video
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+import pytest
+
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def test_overlay_converts_base_and_output_to_stable_pixel_formats(tmp_path, monkeypatch):
     background = tmp_path / "background.mp4"
