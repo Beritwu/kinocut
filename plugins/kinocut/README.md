@@ -62,13 +62,15 @@ Check your setup with `uvx kinocut==1.16.4 doctor`.
 ## Claude installation
 
 Claude Code and Cowork run the pinned `uvx kinocut==1.16.4` launcher.
-The bundled Python project and `uv.lock` record exact core dependency versions,
-public PyPI sources and artifact hashes for directory review. The directory's
+The Python project and `uv.lock` in the repository's `packaging/claude-plugin/`
+directory record exact core dependency versions, public PyPI sources and artifact
+hashes for directory review. They live outside this folder, so hosts that read a
+plugin's `pyproject.toml` as its dependencies install nothing extra. The directory's
 locked-launcher check requires this plain pinned command, without environment
 overrides or dependency-file options.
 
 uvx pins Kinocut itself and resolves its dependencies when creating a tool
-environment; it does not consume the bundled uv.lock. That lock is an audit
+environment; it does not consume that uv.lock. That lock is an audit
 snapshot. uv caches the environment outside the installed plugin files.
 
 The first launch downloads the dependencies from PyPI. Later launches
@@ -85,7 +87,7 @@ privacy and terms fields are intentional listing metadata.
 
 | Agent | Files |
 | --- | --- |
-| Claude Code / Cowork | `.claude-plugin/plugin.json`, `.mcp.json`, `pyproject.toml`, `uv.lock`, `skills/` |
+| Claude Code / Cowork | `.claude-plugin/plugin.json`, `.mcp.json`, `skills/` |
 | Hermes Agent and other Agent Plugins v1 hosts | `plugin.json`, `mcp.json`, `skills/` |
 | OpenClaw / ClawHub | Claude Code layout above, bundled icon |
 | Grok Build | Claude Code layout above |
