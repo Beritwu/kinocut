@@ -7,7 +7,7 @@ description: Use when an agent must edit local video safely. Kinocut guards plan
 
 Use Kinocut when an agent needs a structured video-editing surface instead of hand-writing FFmpeg commands. It exposes MCP tools, a Python client, and a CLI for editing, analysis, subtitles, audio, Hyperframes, layered compositing, and local repurposing workflows.
 
-Published 1.16.3 and the matching development checkout have 203 MCP tools / 177 CLI commands; inspect the installed schemas before using development additions.
+Published 1.16.4 and the matching development checkout have 203 MCP tools / 177 CLI commands; inspect the installed schemas before using development additions.
 Desktop-local execution is available; native Android/iOS clients and a complete
 browser processing application remain unimplemented. Recommended service/client
 work is described in `docs/PLATFORM_PARITY.md`.
@@ -39,7 +39,14 @@ requires a loopback endpoint and never enables the separate fixed cloud QC
 worker. Credentials and tool arguments cannot override `off`. See
 `docs/VISION_PRIVACY.md` before enabling either adapter.
 
-## Revideo local code-video flow (published 1.16.3)
+Hyperframes telemetry and passive update checks default off. Kinocut removes known
+provider credentials from its child environment and disables implicit capture/snapshot
+model analysis. With telemetry off, previews require verified CLI 0.8.104 or 0.8.140.
+Docker rendering and other preview versions require explicit operator telemetry consent;
+do not enable consent on the operator's behalf. These controls do not sandbox project
+assets or requested network access. See the vision/network policy for the limits.
+
+## Revideo local code-video flow (published 1.16.4)
 
 Use `revideo_materialize`, `revideo_install`, and `revideo_render` when the
 caller needs an inspectable staged project. Use `revideo_render_job` for the
@@ -72,7 +79,7 @@ Use when the source is a **stitched equirect 360 MP4** from any camera (Insta360
 3. `video_review_decide` / `Client.decide_360_assembly` with `approve` or `reject`.
 4. Render only an approved plan (`Client.render_360_assembly` or `video_review_decide` + `output_path`).
 
-There is no `video_360_*` MCP tool and no `kino 360` command. In published 1.16.3, `kino intent reformat_vertical --goal "desk 360 split 9:16" --source PATH`
+There is no `video_360_*` MCP tool and no `kino 360` command. In published 1.16.4, `kino intent reformat_vertical --goal "desk 360 split 9:16" --source PATH`
 also proposes a nested `sphere_plan`. Save that plan as its own JSON artifact;
 after actual human review, `kino review-decide PLAN.json accept --output OUTPUT`
 approves and renders it. `reject` never renders; changed source identity blocks
@@ -80,7 +87,7 @@ rendering. Director hooks accept an injected JSON proposer; a configured model
 name alone does not execute a model. Cloud proposals require `allow_cloud`;
 directors never write pixels.
 
-## Published 1.16.3 operator parity
+## Published 1.16.4 operator parity
 
 - Timed audio: `video_mix_audio`, CLI `mix-audio --sounds JSON`, and
   `Client.mix_audio` use one AAC encode and copy the picture. Gains can clip;
@@ -100,9 +107,9 @@ directors never write pixels.
   `Client.estimate_operation` return local heuristics, dimensionless cost units,
   and no billing currency. Do not present them as measured cloud latency/cost.
 
-## Product / object matte (published in 1.15.1; current in 1.16.3)
+## Product / object matte (published in 1.15.1; current in 1.16.4)
 
-The optional object-matte extra is available in published 1.16.3. Use the **existing** `hyperframes-remove-background` / `hyperframes_remove_background` command. Default model is people. For catalog SKUs, jewelry, bottles, shoes, packaging, or anything that is not a person:
+The optional object-matte extra is available in published 1.16.4. Use the **existing** `hyperframes-remove-background` / `hyperframes_remove_background` command. Default model is people. For catalog SKUs, jewelry, bottles, shoes, packaging, or anything that is not a person:
 
 1. `hyperframes_remove_background(info=true)` — lists models, no download.
 2. `pip install "kinocut[object-matte]"` then `model="birefnet-general"`.
