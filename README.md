@@ -180,8 +180,6 @@ for future local changes beyond the published package.
 
 ## Beyond 1.16.3 (draft / gated)
 
-The prepared compatibility candidate `mcp-video==1.6.18` pins `kinocut==1.16.3`; neither candidate is published yet.
-
 The published compatibility installer `mcp-video==1.6.18` pins `kinocut==1.16.3`. Fleet upgrade and running-process verification instructions are in [docs/FLEET_UPGRADE.md](docs/FLEET_UPGRADE.md).
 
 The 2026-10-23 publication checkpoint is **1.16.3**. Draft/gated work stays out of release claims until publication is verified. Live directory submissions and launch posts remain operator/human residual (`docs/HUMAN_GATES.md`) and are **not** claimed complete.
