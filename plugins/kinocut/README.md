@@ -5,23 +5,48 @@
 Guarded local video editing for AI agents. The plugin adds the Kinocut MCP
 server and two skills (`kinocut`, `kinocut-repurpose`) to your agent.
 
-Plugin bundle **1.16.6** pins the separately versioned Kinocut runtime
-**1.16.3**. The legacy `mcp-video` compatibility package **1.6.18** installs
+Plugin bundle **1.16.7** pins the separately versioned Kinocut runtime
+**1.16.4**. The legacy `mcp-video` compatibility package **1.6.19** installs
 that same runtime. Catalog entries use the bundle version; launchers use the
 runtime version.
 
-Kinocut processes media on your own machine. Network use depends on the features
-you choose:
+Local FFmpeg editing and color grading need no account or API key. Network use
+depends on the features you choose:
 
 - The first launch downloads Kinocut and its dependencies from PyPI.
 - URL inputs download the requested media.
 - Font and model-weight features download assets from GitHub when needed.
-- With `use_ai` enabled and `ANTHROPIC_API_KEY` set, AI color grading sends a
-  video frame to Anthropic.
-- Revideo dependency installation runs `npm ci`, which accesses the npm registry.
+- Optional Kinocut model calls default off. When explicitly enabled, legacy product
+  descriptions send the selected image to an Anthropic-compatible endpoint; the
+  separate sampled-frame quality-check worker uses Anthropic.
+- Revideo dependency installation runs `npm ci` and may download renderer dependencies.
+  Revideo telemetry defaults off; only an explicit operator
+  `KINOCUT_REVIDEO_TELEMETRY=true` enables it.
+- Hyperframes is a separate CLI. Kinocut disables its telemetry and passive update
+  checks by default, removes known provider credentials from its child environment,
+  and disables implicit capture/snapshot model analysis. With telemetry off, browser
+  previews require verified CLI 0.8.104 or 0.8.140. Docker rendering and other preview
+  versions require explicit operator `KINOCUT_HYPERFRAMES_TELEMETRY=true` consent.
 
-Local FFmpeg editing does not upload your media. Review and approve optional
-network features before using them.
+These controls are not a network sandbox. Project code, assets, requested URLs and
+dependency installation can still access the network. Review optional features
+before using them.
+
+## Vision review and provider choice
+
+Keep `KINOCUT_VISION_MODE=off` unless you choose to enable a legacy adapter.
+An inherited API key or `use_ai=true` cannot override that setting. To use Hermes's
+chosen provider, prepare local frames with `video_thumbnail` or `video_qc_vision`
+and inspect them through Hermes's image tools. For local product colors, use
+`image_analyze_product(use_ai=false)`. Hermes owns its model selection, credentials
+and fallback policy; Kinocut's MCP process does not automatically inherit them.
+
+The optional product adapter supports explicit `local` and `remote` modes using
+the Anthropic-compatible Messages protocol. Local mode requires a loopback endpoint,
+has no cloud fallback and cannot activate the separate Anthropic QC worker.
+Missing model support must be reported as unavailable; host observations do not
+turn an unevaluated Kinocut assessment into a scored pass. See the
+[vision and network policy](https://github.com/KyaniteLabs/kinocut/blob/v1.16.4/docs/VISION_PRIVACY.md) for configuration and limits.
 
 Prefer new output paths. Never target credentials, session files or agent
 configuration directories.
@@ -32,11 +57,11 @@ configuration directories.
 - FFmpeg and ffprobe on `PATH`
 - Python 3.11 or newer (uv installs it if needed)
 
-Check your setup with `uvx kinocut==1.16.3 doctor`.
+Check your setup with `uvx kinocut==1.16.4 doctor`.
 
 ## Claude installation
 
-Claude Code and Cowork run the pinned `uvx kinocut==1.16.3` launcher.
+Claude Code and Cowork run the pinned `uvx kinocut==1.16.4` launcher.
 The bundled Python project and `uv.lock` record exact core dependency versions,
 public PyPI sources and artifact hashes for directory review. The directory's
 locked-launcher check requires this plain pinned command, without environment
@@ -49,7 +74,7 @@ snapshot. uv caches the environment outside the installed plugin files.
 The first launch downloads the dependencies from PyPI. Later launches
 reuse that environment. This does not bundle FFmpeg or optional AI packages.
 Cursor, MiniMax, Kimi and Agent Plugins hosts retain the pinned
-`uvx kinocut==1.16.3` launcher below.
+`uvx kinocut==1.16.4` launcher below.
 
 Claude's directory still requires manual review for registry package launchers,
 including locked ones. The lock documents a dependency snapshot; it does not guarantee
@@ -77,7 +102,7 @@ Clients can also use the pinned configuration directly:
 ```json
 {
   "mcpServers": {
-    "kinocut": { "command": "uvx", "args": ["kinocut==1.16.3"] }
+    "kinocut": { "command": "uvx", "args": ["kinocut==1.16.4"] }
   }
 }
 ```
@@ -92,7 +117,7 @@ goes in `mcp_servers` in your Hermes `config.yaml`:
 mcp_servers:
   kinocut:
     command: uvx
-    args: ["kinocut==1.16.3"]
+    args: ["kinocut==1.16.4"]
     tools:
       include: [search_tools, video_info, video_trim, video_thumbnail]
       resources: false
