@@ -423,6 +423,7 @@ class TestVisionEndpoint:
         fake.Anthropic = _FakeAnthropic
         monkeypatch.setitem(sys.modules, "anthropic", fake)
 
+        monkeypatch.setenv("KINOCUT_VISION_MODE", "local")
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         monkeypatch.setenv("KINOCUT_VISION_BASE_URL", "http://127.0.0.1:19876")
         monkeypatch.setenv("KINOCUT_VISION_MODEL", "qwen3.8-27b-vision")
@@ -434,10 +435,13 @@ class TestVisionEndpoint:
             result = analyze_product(path, use_ai=True)
             assert result.ai_description is True
             assert result.description == "A solid blue product image."
-            assert captured["client_kwargs"] == {
-                "api_key": "local-endpoint",
-                "base_url": "http://127.0.0.1:19876",
-            }
+            options = captured["client_kwargs"]
+            assert options["api_key"] == "local-endpoint"
+            assert options["base_url"] == "http://127.0.0.1:19876"
+            assert options["max_retries"] == 0
+            assert options["timeout"] == 60
+            assert options["http_client"].follow_redirects is False
+            assert options["http_client"].trust_env is False
             assert captured["create_kwargs"]["model"] == "qwen3.8-27b-vision"
         finally:
             os.unlink(path)

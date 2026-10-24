@@ -18,6 +18,13 @@ durable receipts without inode evidence cannot be adopted by the new runtime.
 
 ## Diagnostics
 
+Optional vision calls default to `KINOCUT_VISION_MODE=off`, even with credentials
+or `image-analyze-product --use-ai`. Use host image inspection for provider-neutral
+review. Explicit `local` mode permits only a loopback Anthropic-compatible product
+endpoint; legacy semantic QC requires `remote` consent. Revideo telemetry is
+disabled unless `KINOCUT_REVIDEO_TELEMETRY=true`. See
+[vision and network controls](VISION_PRIVACY.md) for routing and disclosure.
+
 | Command | Description |
 |---------|-------------|
 | `doctor` | Check FFmpeg, Hyperframes, image, and AI dependencies. Optional `sphere_director` reports configured 360 director IDs (probe only; no network). |

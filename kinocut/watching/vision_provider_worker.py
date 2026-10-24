@@ -12,6 +12,7 @@ from pathlib import Path
 from kinocut.defaults import DEFAULT_VISION_PROVIDER_TIMEOUT
 from kinocut.errors import MCPVideoError
 from kinocut.limits import MAX_VISION_REQUEST_BYTES, MAX_VISION_RESPONSE_BYTES, SUBPROCESS_READ_CHUNK_BYTES
+from kinocut.vision_policy import require_vision_provider
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ def _bounded_response(response) -> bytes:
 
 def fetch_response(payload: bytes) -> bytes:
     """Read bounded successful bodies; reject redirects and close error bodies unread."""
+    require_vision_provider(fixed_origin=True)
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key or len(payload) > MAX_VISION_REQUEST_BYTES:
         raise MCPVideoError("Vision request is unavailable or oversized", error_type="dependency_error")

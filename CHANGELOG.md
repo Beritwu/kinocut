@@ -11,6 +11,21 @@ This project follows a simple release-note style:
 
 ## Unreleased
 
+## 1.16.4 - 2026-10-23
+
+### Security
+
+- Disable optional vision provider calls by default, even with inherited credentials. Operators must explicitly select `KINOCUT_VISION_MODE=local` or `remote`; `off` disables both legacy adapters. Local product descriptions require a loopback endpoint and disable environment proxies, redirects and cloud fallback.
+- Keep the separate fixed Anthropic QC worker unavailable for local/custom product routes. Neither `use_ai` nor `require_vlm` grants network permission.
+- Disable Revideo telemetry for installation and rendering unless the operator explicitly sets `KINOCUT_REVIDEO_TELEMETRY=true`.
+- Suppress Hyperframes telemetry, passive update checks and automatic skill installation in both command and preview processes. Remove inherited provider credentials and skip upstream captions/analysis during capture, snapshots and stills; use host image inspection instead.
+- Require explicit Hyperframes telemetry consent for Docker rendering and browser previews outside verified versions 0.8.104/0.8.140; rejected previews leave existing previews running.
+
+### Changed
+
+- Document provider-neutral review through the host's configured image tools and the limits of the legacy provider adapters. Correct the disclosure: product descriptions and optional semantic QC can send frames; FFmpeg color grading is local.
+- Existing users of legacy provider calls must explicitly opt in after upgrading. Tool names and signatures remain compatible.
+
 ## 1.16.3 - 2026-10-23
 
 ### Security

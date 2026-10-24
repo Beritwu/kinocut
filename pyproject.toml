@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kinocut"
-version = "1.16.3"
+version = "1.16.4"
 description = "Trusted, guardrailed video editing for AI agents. FFmpeg, Hyperframes, repurposing tools, Python client, CLI, and MCP server."
-readme = "README.md"
+readme = "README-PYPI.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 keywords = [
@@ -219,6 +219,7 @@ only-include = [
     "/LICENSE",
     "/mcpb",
     "/README.md",
+    "/README-PYPI.md",
     "/pyproject.toml",
     "/scripts/build-mcpb.py",
     "/scripts/mcpb",

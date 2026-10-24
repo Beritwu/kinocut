@@ -1,6 +1,6 @@
 """Explicitly opted-in, bounded semantic keyframe assessment.
 
-Setting KINOCUT_VISION_MODEL and ANTHROPIC_API_KEY enables one paid request.
+Remote mode plus KINOCUT_VISION_MODEL and ANTHROPIC_API_KEY enables one paid request.
 Frames are samples, so even a successful response never approves a whole film.
 """
 
@@ -20,6 +20,7 @@ from pydantic import Field, model_validator
 from kinocut.contracts._common import ValueObject
 from kinocut.defaults import DEFAULT_VISION_PROVIDER_MAX_TOKENS, DEFAULT_VISION_PROVIDER_TIMEOUT
 from kinocut.errors import MCPVideoError
+from kinocut.vision_policy import require_vision_provider, vision_provider_allowed
 from kinocut.limits import (
     MAX_VIDEO_DURATION,
     MAX_VISION_KEYFRAME_BYTES,
@@ -52,6 +53,8 @@ class SemanticVisionAssessment(ValueObject):
 
 def configured_vision_model() -> str | None:
     """No default model and no requests triggered solely by an SDK installation."""
+    if not vision_provider_allowed(fixed_origin=True):
+        return None
     model = os.environ.get("KINOCUT_VISION_MODEL")
     if not model or not os.environ.get("ANTHROPIC_API_KEY"):
         return None
@@ -79,6 +82,7 @@ def _image_content(sample: dict) -> list[dict]:
 
 def assess_keyframes(model: str, samples: list[dict]) -> SemanticVisionAssessment:
     """Run one bounded request; malformed responses, errors and timeouts fail closed."""
+    require_vision_provider(fixed_origin=True)
     if not samples or len(samples) > MAX_VISION_SAMPLE_FRAMES:
         raise MCPVideoError("Vision sample count is outside its bounds", error_type="validation_error")
     content = [block for sample in samples for block in _image_content(sample)]

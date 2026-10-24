@@ -24,13 +24,29 @@ Depth (rescue, salvage, composite, Hyperframes, thin sound S12): `docs/TOOLS.md`
 
 Load the relevant guide when needed. Use source evidence for editorial choices; preserve names, numbers, negation, and qualifications. Report missing evidence or unsupported actions instead of inventing source claims, timestamps, or capabilities. A planning tool proposes an edit; its existence does not mean the required detector or model has run. Code owns timing, transforms, validation, and execution; human review remains separate from model judgment.
 
+## Vision review and network permission (1.16.4)
+
+Keep `KINOCUT_VISION_MODE=off` (the default). Prepare images with `video_thumbnail`
+or `video_qc_vision`, then use the host's configured vision model to inspect them.
+Use `image_analyze_product(use_ai=false)` for local colors. The host owns local or
+hosted inference and fallback; Kinocut's MCP process does not inherit that routing.
+Keep host observations separate from Kinocut's unevaluated semantic QC status.
+Do not invent a visual pass when no model or human has inspected the frames.
+
+The optional legacy product adapter requires explicit operator `local` or
+`remote` mode and speaks the Anthropic-compatible Messages protocol. Local mode
+requires a loopback endpoint and never enables the separate fixed cloud QC
+worker. Credentials and tool arguments cannot override `off`. See
+`docs/VISION_PRIVACY.md` before enabling either adapter.
+
 ## Revideo local code-video flow (published 1.16.3)
 
 Use `revideo_materialize`, `revideo_install`, and `revideo_render` when the
 caller needs an inspectable staged project. Use `revideo_render_job` for the
 same guarded steps in one call. A supplied scene is trusted executable
 TypeScript: inspect it before use and never run untrusted scene code. Dependency
-installation may access npm; rendering runs locally against Kinocut's pinned
+installation may access npm. From 1.16.4, telemetry defaults off; only explicit
+operator `KINOCUT_REVIDEO_TELEMETRY=true` enables it. Rendering runs locally against Kinocut's pinned
 template. The render receipt binds observed media and output bytes to the exact
 bounded on-disk job-file digest. `.mp4`, `.webm`, and `.mov` select pinned MP4,
 WebM, and ProRes 4444 exporter modes and are verified before publication. Verify the receipt against the output bytes, run `video_quality_check`

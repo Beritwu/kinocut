@@ -28,6 +28,7 @@ from .defaults import (
     DEFAULT_REVIDEO_OUT_FILE,
     DEFAULT_REVIDEO_RENDER_TIMEOUT,
     DEFAULT_REVIDEO_SEED,
+    DEFAULT_REVIDEO_TELEMETRY,
     DEFAULT_REVIDEO_WIDTH,
     DEFAULT_REVIDEO_WORKERS,
 )
@@ -310,6 +311,10 @@ def _run_npm(
 ) -> subprocess.CompletedProcess[str]:
     """Run npm with closed stdin and a hard timeout."""
     cmd = ["npm", *args]
+    telemetry = os.environ.get("KINOCUT_REVIDEO_TELEMETRY", str(DEFAULT_REVIDEO_TELEMETRY)).strip().lower()
+    if telemetry not in {"true", "false"}:
+        raise MCPVideoError("KINOCUT_REVIDEO_TELEMETRY must be true or false", error_type="validation_error")
+    child_env = {**os.environ, **(extra_env or {}), "DISABLE_TELEMETRY": str(telemetry != "true").lower()}
     try:
         return subprocess.run(  # noqa: S603
             cmd,
@@ -318,7 +323,7 @@ def _run_npm(
             text=True,
             timeout=timeout,
             stdin=subprocess.DEVNULL,
-            env={**os.environ, **(extra_env or {})},
+            env=child_env,
         )
     except subprocess.TimeoutExpired:
         raise RevideoRenderError(" ".join(cmd), -1, "npm step timed out") from None
