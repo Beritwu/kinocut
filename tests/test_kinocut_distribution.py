@@ -472,8 +472,10 @@ def test_vendor_plugin_bundle_versions_and_pinned_runtime_are_consistent() -> No
 
 def test_claude_plugin_plain_pinned_launcher_has_a_complete_public_registry_lock() -> None:
     plugin = ROOT / "plugins" / "kinocut"
-    project = _toml(plugin / "pyproject.toml")["project"]
-    lock = _toml(plugin / "uv.lock")
+    locked = ROOT / "packaging" / "claude-plugin"
+    assert not (plugin / "pyproject.toml").exists() and not (plugin / "uv.lock").exists()
+    project = _toml(locked / "pyproject.toml")["project"]
+    lock = _toml(locked / "uv.lock")
     server = json.loads((plugin / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"]["kinocut"]
 
     assert project["dependencies"] == [f"kinocut=={PLUGIN_RUNTIME_VERSION}"]
@@ -494,7 +496,7 @@ def test_claude_plugin_plain_pinned_launcher_has_a_complete_public_registry_lock
             assert artifact["url"].startswith("https://files.pythonhosted.org/")
             assert re.fullmatch(r"sha256:[0-9a-f]{64}", artifact["hash"])
         assert all(dependency["name"] in packages for dependency in package.get("dependencies", []))
-    assert (plugin / "uv.lock").stat().st_size < 256 * 1024
+    assert (locked / "uv.lock").stat().st_size < 256 * 1024
 
 
 def test_registry_metadata_is_local_package_only() -> None:
