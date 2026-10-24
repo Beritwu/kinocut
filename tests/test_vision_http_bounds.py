@@ -11,6 +11,12 @@ from kinocut.limits import MAX_VISION_RESPONSE_BYTES
 from kinocut.watching import vision_provider_worker as worker
 
 
+@pytest.fixture(autouse=True)
+def explicit_fixture_permission(monkeypatch):
+    monkeypatch.setenv("KINOCUT_VISION_MODE", "remote")
+    monkeypatch.delenv("KINOCUT_VISION_BASE_URL", raising=False)
+
+
 class Response(io.BytesIO):
     def __init__(self, body, headers=None, status=200):
         super().__init__(body)

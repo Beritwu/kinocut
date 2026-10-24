@@ -61,14 +61,17 @@ def image_analyze_product(
 ) -> dict[str, Any]:
     """Analyze a product image or video frame — extract colors and optionally generate AI description.
 
-    Extracts dominant colors from an image. Optionally uses Claude Vision to
-    generate a natural language description of the product.
+    Extracts dominant colors locally. For provider-neutral descriptions, inspect
+    the image with your host's configured vision model. The optional legacy
+    description adapter uses the Anthropic-compatible Messages protocol and is
+    disabled by default, even when an API key is present.
 
     Args:
         image_path: Absolute path to the image or video file. If video, extracts a representative frame.
-        use_ai: If True, use Claude Vision to generate a description (requires ANTHROPIC_API_KEY;
-            or set KINOCUT_VISION_BASE_URL to a local Anthropic-compatible endpoint —
-            local endpoints need no API key; KINOCUT_VISION_MODEL overrides the model id).
+        use_ai: Request a legacy provider description. Also requires operator consent:
+            KINOCUT_VISION_MODE=local with a loopback KINOCUT_VISION_BASE_URL, or
+            remote for a hosted endpoint. Local endpoints need no API key.
+            KINOCUT_VISION_MODEL selects the model; this adapter does not inherit host routing.
         n_colors: Number of dominant colors to extract (default 5).
     """
     image_path = _validate_input_path(image_path)

@@ -119,7 +119,7 @@ video.release_checkpoint(short.output_path)  # thumbnail + quality gate before y
 | --- | --- | --- |
 | **PyPI / npm checkpoint** | **[1.16.3](https://pypi.org/project/kinocut/1.16.3/)** (2026-10-23) | Last recorded publication checkpoint; consult the registries for the latest version. Install with `pip install kinocut`. |
 | **GitHub latest release / MCP Registry** | **1.16.3** | GitHub release `v1.16.3` and the official MCP Registry (`tech.kyanitelabs/kinocut`, local `uvx kinocut` stdio package) report 1.16.3 (verified 2026-10-23). Final owner acceptance and fleet rollout remain separate. |
-| **This source version** | **1.16.3 candidate** · **203 MCP / 177 CLI** | Adds explicit overwrite consent and the Hermes plugin review fixes; publication is tracked separately in `docs/public_claims.json`. |
+| **This source version** | **1.16.4 candidate** · **203 MCP / 177 CLI** | Defaults optional model calls and renderer telemetry off. Candidate `mcp-video==1.6.19` pins this runtime; publication is tracked separately in `docs/public_claims.json`. |
 | **Next public release** | **TBD** | Human residuals (directories, launch posts) stay gated; further bumps need a new go-ahead. |
 
 Install from PyPI for the stable package, including the optional object-matte extra. Clone `master` when you want local development changes beyond the published package; see [docs/PRODUCT_MATTE.md](docs/PRODUCT_MATTE.md) for the published object-matte workflow.

@@ -606,6 +606,8 @@ WINNERS_ARTIFACT_OPTIONAL_FIELDS = ("judges",)
 WINNERS_HEX64_CHARS = frozenset("0123456789abcdef")
 
 # Revideo bridge output + seed bounds (liminal #999).
+VISION_MODES = frozenset({"off", "local", "remote"})
+HYPERFRAMES_PRIVATE_PREVIEW_VERSIONS = frozenset({"0.8.104", "0.8.140"})
 REVIDEO_OUT_FILE_SUFFIXES = (".mp4", ".webm", ".mov")
 REVIDEO_MEDIA_IDENTITIES = {
     ".mp4": {"format_token": "mp4", "video_codecs": ("h264", "mpeg4"), "major_brand": "isom"},

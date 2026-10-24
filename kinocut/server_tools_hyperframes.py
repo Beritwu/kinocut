@@ -278,7 +278,12 @@ def hyperframes_capture(
     max_screenshots: int | None = None,
     timeout_ms: int | None = None,
 ) -> dict[str, Any]:
-    """Capture a website as editable Hyperframes components."""
+    """Capture a website as editable Hyperframes components without provider captions.
+
+    Downloads the requested website and assets. Kinocut passes --skip-vision so
+    inherited provider credentials cannot enable upstream image uploads. Inspect
+    retained images with your host's configured model instead.
+    """
     if not url.startswith(("http://", "https://")):
         return _validation_error("url must start with http:// or https://")
     from .hyperframes_engine import capture

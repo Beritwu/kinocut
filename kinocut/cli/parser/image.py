@@ -31,7 +31,9 @@ def _add_image_analysis_parsers(subparsers: argparse._SubParsersAction) -> None:
     )
     imgprod_p.add_argument("input", help="Input image file")
     imgprod_p.add_argument(
-        "--use-ai", action="store_true", help="Use Claude Vision for description (requires ANTHROPIC_API_KEY)"
+        "--use-ai",
+        action="store_true",
+        help="Request legacy vision description (also requires KINOCUT_VISION_MODE=local or remote)",
     )
     imgprod_p.add_argument(
         "-n", "--n-colors", type=int, default=5, help="Number of colors to extract (default: 5, max: 20)"

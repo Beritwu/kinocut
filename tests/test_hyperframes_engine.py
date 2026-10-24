@@ -809,9 +809,14 @@ class TestPreview:
     """Tests for preview()."""
 
     @pytest.fixture(autouse=True)
-    def _clear_preview_registry(self):
+    def _clear_preview_registry(self, monkeypatch):
         from mcp_video.hyperframes_engine import _active_previews
 
+        monkeypatch.setenv("KINOCUT_HYPERFRAMES_TELEMETRY", "false")
+        monkeypatch.setattr(
+            "mcp_video.hyperframes_engine._run_hyperframes",
+            lambda *a, **kw: _make_completed_process(stdout="0.8.104"),
+        )
         _active_previews.clear()
         yield
         _active_previews.clear()
