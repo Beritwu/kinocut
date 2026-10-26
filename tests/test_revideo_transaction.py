@@ -14,6 +14,9 @@ from kinocut import revideo_engine
 from kinocut.errors import RevideoNotFoundError, RevideoProjectError, RevideoRenderError, ValidationError
 from kinocut.revideo_engine import install_deps, materialize_project, render, render_job
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def _job() -> dict:
     return {"width": 640, "height": 360, "fps": 10, "frames": 10, "seed": 7, "workers": 1}

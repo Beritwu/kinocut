@@ -31,6 +31,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
+from .defaults import DEFAULT_HYPERFRAMES_TELEMETRY, DEFAULT_HYPERFRAMES_VERSION_TIMEOUT
 from .errors import (
     HyperframesNotFoundError,
     HyperframesProjectError,
@@ -41,11 +42,29 @@ from .hyperframes_models import (
     HyperframesPreviewResult,
     HyperframesValidationResult,
 )
+from .validation import HYPERFRAMES_PRIVATE_PREVIEW_VERSIONS
 
 HYPERFRAMES_COMMAND_ENV = "MCP_VIDEO_HYPERFRAMES_COMMAND"
 HYPERFRAMES_COMMAND_PREFIX = ["hyperframes"]
 _HYPERFRAMES_BINARY_NAMES = ("hyperframes", "hyperframes.cmd")
 _WINDOWS_COMMAND_PATH_RE = re.compile(r"^([A-Za-z]:\\.*?\.(?:bat|cmd|exe|ps1))(?=\s|$)", re.IGNORECASE)
+_HYPERFRAMES_PROVIDER_CREDENTIALS = frozenset(
+    {
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_CUSTOM_HEADERS",
+        "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "HYPERFRAMES_VERTEX_PROJECT_ID",
+        "HYPERFRAMES_VERTEX_SERVICE_ACCOUNT",
+        "HEYGEN_API_KEY",
+        "HYPERFRAMES_API_KEY",
+        "ELEVENLABS_API_KEY",
+    }
+)
 
 # ---------------------------------------------------------------------------
 # Preview lifecycle management
@@ -217,6 +236,59 @@ def _validate_project(project_path: str) -> tuple[Path, Path]:
     return p, entry_point
 
 
+def _hyperframes_telemetry_allowed() -> bool:
+    """Require explicit operator consent for optional telemetry."""
+    value = os.environ.get("KINOCUT_HYPERFRAMES_TELEMETRY")
+    if value is None:
+        return DEFAULT_HYPERFRAMES_TELEMETRY
+    if value.strip().lower() not in {"true", "false"}:
+        raise MCPVideoError(
+            "KINOCUT_HYPERFRAMES_TELEMETRY must be true or false",
+            error_type="validation_error",
+            code="invalid_parameter",
+        )
+    return value.strip().lower() == "true"
+
+
+def _hyperframes_environment() -> dict[str, str]:
+    """Apply telemetry consent and suppress installers and update checks."""
+    telemetry_allowed = _hyperframes_telemetry_allowed()
+    environment = {
+        **{key: value for key, value in os.environ.items() if key not in _HYPERFRAMES_PROVIDER_CREDENTIALS},
+        "HYPERFRAMES_SKIP_SKILLS": "1",
+        "HYPERFRAMES_NO_UPDATE_CHECK": "1",
+    }
+    if not telemetry_allowed:
+        environment.update(HYPERFRAMES_NO_TELEMETRY="1", VITE_HYPERFRAMES_NO_TELEMETRY="1", DO_NOT_TRACK="1")
+    return environment
+
+
+def _require_docker_consent() -> None:
+    """Container renders cannot reliably inherit the parent's telemetry opt-out."""
+    if not _hyperframes_telemetry_allowed():
+        raise MCPVideoError(
+            "Docker rendering cannot reliably inherit telemetry opt-outs. "
+            "Explicit consent requires KINOCUT_HYPERFRAMES_TELEMETRY=true.",
+            error_type="validation_error",
+            code="hyperframes_telemetry_consent_required",
+        )
+
+
+def _require_private_preview(project: Path) -> None:
+    """Reject browser previews whose runtime telemetry opt-out is unverified."""
+    if _hyperframes_telemetry_allowed():
+        return
+    result = _run_hyperframes(["--version"], cwd=project, timeout=DEFAULT_HYPERFRAMES_VERSION_TIMEOUT)
+    version = result.stdout.strip() if result.returncode == 0 else ""
+    if version not in HYPERFRAMES_PRIVATE_PREVIEW_VERSIONS:
+        raise MCPVideoError(
+            "Preview telemetry opt-out is verified only for Hyperframes 0.8.104 and 0.8.140. "
+            "Use a verified version or explicitly consent with KINOCUT_HYPERFRAMES_TELEMETRY=true.",
+            error_type="validation_error",
+            code="hyperframes_telemetry_consent_required",
+        )
+
+
 def _run_hyperframes(
     args: list[str],
     cwd: str | Path,
@@ -236,7 +308,7 @@ def _run_hyperframes(
             stdin=subprocess.DEVNULL,
             # `init` runs a network AI-skills check that the --skip-skills flag
             # does not currently disable; this env var is the supported opt-out.
-            env={**os.environ, "HYPERFRAMES_SKIP_SKILLS": "1"},
+            env=_hyperframes_environment(),
         )
     except subprocess.TimeoutExpired:
         raise HyperframesRenderError(" ".join(cmd), -1, "Render timed out") from None
@@ -289,6 +361,8 @@ _SCHEMA: dict[str, dict[str, Any]] = {
     "snapshot": {
         "subcommand": "snapshot",
         "positional": ["project_path"],
+        # Snapshot/still otherwise call Gemini automatically when a key exists.
+        "fixed": ["--describe", "false"],
         "flags": {
             "frames": "frames",
             "at": "at_csv",
@@ -335,7 +409,9 @@ _SCHEMA: dict[str, dict[str, Any]] = {
     "capture": {
         "subcommand": "capture",
         "positional": ["url"],
-        "fixed": ["--json"],
+        # Upstream otherwise captions captured images using ambient provider
+        # keys. Host image inspection owns provider-neutral review instead.
+        "fixed": ["--json", "--skip-vision"],
         "flags": {
             "output": "output",
             "max-screenshots": "max_screenshots",
@@ -471,6 +547,8 @@ def _hyperframes_op(
             code="invalid_parameter",
         )
 
+    if operation == "render" and kwargs.get("docker"):
+        _require_docker_consent()
     _require_node()
 
     cwd_key = spec.get("cwd_key", "project_path")
@@ -558,6 +636,7 @@ def preview(
     _require_node()
     project, _entry_point = _validate_project(project_path)
     _require_hyperframes_deps(cwd=project)
+    _require_private_preview(project)
     stop_preview(port)
 
     cmd = [*_hyperframes_command_prefix(cwd=project), "preview", str(project), "--port", str(port)]
@@ -569,6 +648,7 @@ def preview(
         stderr=subprocess.DEVNULL,
         text=True,
         start_new_session=True,
+        env=_hyperframes_environment(),
     )
 
     time.sleep(min(startup_timeout, 2))

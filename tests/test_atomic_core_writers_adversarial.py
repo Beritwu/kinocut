@@ -7,6 +7,7 @@ import pytest
 
 from kinocut.errors import ProcessingError
 from kinocut.ffmpeg_helpers import _reset_operation_inputs
+from kinocut.output_policy import output_operation
 
 
 CASES = [
@@ -65,7 +66,7 @@ def test_partial_encoder_failure_preserves_delivery(
         monkeypatch.setattr(module, "_require_filter", lambda *args: None)
         monkeypatch.setattr(module, "_detect_motion_vectors", lambda *args: None)
     source = [sample_video, sample_video] if function_name == "merge" else sample_video
-    with pytest.raises(ProcessingError):
+    with output_operation(overwrite=True), pytest.raises(ProcessingError):
         getattr(module, function_name)(source, output_path=str(output), **params)
     assert output.read_bytes() == original
     assert not list(tmp_path.glob(".kinocut_tmp_*"))

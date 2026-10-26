@@ -2,6 +2,9 @@
 
 import hashlib
 from io import BytesIO
+from pathlib import Path
+
+from kinocut.ffmpeg_helpers import _atomic_artifact
 
 import pytest
 
@@ -9,11 +12,14 @@ from kinocut.errors import MCPVideoError
 from kinocut.model_cache import model_download_stage
 from kinocut.staged_writers import open_staged_writer
 
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 @pytest.mark.parametrize("failure", [False, True])
 def test_model_stage_preserves_prior_cache_until_verified(tmp_path, failure):
     destination = tmp_path / "model.onnx"
-    destination.write_bytes(b"prior")
+    with _atomic_artifact(str(destination)) as staged:
+        Path(staged).write_bytes(b"prior")
     foreign = destination.with_suffix(".tmp")
     foreign.write_bytes(b"foreign")
     try:
@@ -47,7 +53,8 @@ def test_object_weights_verify_before_publication(monkeypatch, tmp_path, payload
 
     monkeypatch.setattr(weights.urllib.request, "urlopen", response)
     destination = tmp_path / "model.onnx"
-    destination.write_bytes(b"prior")
+    with _atomic_artifact(str(destination)) as staged:
+        Path(staged).write_bytes(b"prior")
     foreign = destination.with_suffix(".tmp")
     foreign.write_bytes(b"foreign")
     if payload == pinned:

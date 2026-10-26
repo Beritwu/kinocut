@@ -14,6 +14,8 @@ from mcp_video.engine_composite_layers import composite_layers
 from mcp_video.errors import MCPVideoError
 from mcp_video.limits import MAX_VIDEO_DURATION
 
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def _write_minimal_assets(tmp_path):
     bg = tmp_path / "bg.mp4"

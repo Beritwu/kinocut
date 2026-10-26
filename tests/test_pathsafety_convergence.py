@@ -68,7 +68,8 @@ class TestCanonicalValidator:
         # /tmp is not blocked — should not raise
         _validate_output_path("/tmp/output.mp4")
 
-    def test_allows_relative(self) -> None:
+    def test_allows_relative(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.chdir(tmp_path)
         _validate_output_path("relative/output.mp4")
 
     def test_blocks_sensitive_home_ssh(self, tmp_path, monkeypatch) -> None:
@@ -123,7 +124,8 @@ class TestAnalysisOutputPathsDelegation:
             output_json=None,
         )
 
-    def test_allows_relative_paths(self) -> None:
+    def test_allows_relative_paths(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.chdir(tmp_path)
         from mcp_video.ai_engine import _validate_analysis_output_paths
 
         _validate_analysis_output_paths(

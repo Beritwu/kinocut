@@ -12,6 +12,10 @@ from kinocut.watching import vision_provider, vision_qc
 
 @pytest.fixture(autouse=True)
 def no_default_paid_requests(monkeypatch):
+    # These provider execution fixtures explicitly opt in; policy-denial tests
+    # live separately and must not inherit this grant.
+    monkeypatch.setenv("KINOCUT_VISION_MODE", "remote")
+    monkeypatch.delenv("KINOCUT_VISION_BASE_URL", raising=False)
     monkeypatch.delenv("KINOCUT_VISION_MODEL", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 

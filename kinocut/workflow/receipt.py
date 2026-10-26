@@ -15,10 +15,10 @@ existing import sites.
 from __future__ import annotations
 
 import hashlib
+import contextlib
 import json
 import os
 import re
-import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -27,7 +27,8 @@ from pydantic import ValidationError
 
 from ..contracts.trusted_execution import ReceiptLineage
 from ..errors import MCPVideoError
-from ..ffmpeg_helpers import _validate_artifact_path
+from ..ffmpeg_helpers import _atomic_artifact, _open_staged_writer
+from ..output_policy import output_operation
 from ._errors import (
     INVALID_WORKFLOW_RECEIPT,
     INVALID_WORKFLOW_SPEC,
@@ -246,7 +247,9 @@ def _utcnow() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def _write_receipt(receipt: dict[str, Any], save_receipt: str, workspace_root: Path | None = None) -> None:
+def _write_receipt(
+    receipt: dict[str, Any], save_receipt: str, workspace_root: Path | None = None, *, overwrite: bool = False
+) -> None:
     """Atomically write the receipt as pretty, stable JSON (matches the plan writer).
 
     Stage-then-swap: serialize to a same-directory temp file, then ``os.replace`` it
@@ -257,14 +260,18 @@ def _write_receipt(receipt: dict[str, Any], save_receipt: str, workspace_root: P
     or the new complete receipt, which is what makes kill/reopen/resume safe."""
     if not isinstance(save_receipt, str) or not save_receipt:
         raise workflow_error("save_receipt must be a non-empty file path", INVALID_WORKFLOW_SPEC)
-    _validate_artifact_path(save_receipt)  # traversal / symlink / system-dir / dotfile / overwrite-non-json guard
     if workspace_root is not None:
         _confine_artifact_path(save_receipt, workspace_root, "save_receipt")
     payload = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
-    target = Path(save_receipt)
-    tmp = target.parent / f".{target.name}.{uuid.uuid4().hex[:8]}.tmp"
-    tmp.write_text(payload, encoding="utf-8")
-    os.replace(tmp, target)
+    with (
+        output_operation(True) if overwrite else contextlib.nullcontext(),
+        _atomic_artifact(save_receipt) as staged,
+        _open_staged_writer(staged) as stream,
+    ):
+        stream.write(payload.encode("utf-8"))
+        from ..projectstore.receipt_ownership import witness_receipt_stage
+
+        witness_receipt_stage(save_receipt, staged)
 
 
 # --- Receipt lineage ---------------------------------------------------------
@@ -307,7 +314,7 @@ def attach_receipt_lineage(
         job_id=job_id,
     )
     if save_receipt is not None:
-        _write_receipt(receipt, save_receipt, workspace_root)
+        _write_receipt(receipt, save_receipt, workspace_root, overwrite=True)
     return receipt
 
 

@@ -9,6 +9,7 @@ from typing import Any
 
 from kinocut.engine_repurpose import _release_checkpoint
 from kinocut.errors import MCPVideoError
+from kinocut.ffmpeg_helpers import _owns_operation_output
 from kinocut.workflow.planner import _hash_if_exists
 from kinocut.workflow.spec import load_spec, parse_spec
 from kinocut.workflow.receipt import _sanitize_message, _write_receipt
@@ -90,11 +91,12 @@ def enforce_repurpose_release_policy(project: store.Project, job_id: str, receip
 def _persist_release_receipt(project: store.Project, job_id: str, receipt: dict[str, Any]) -> None:
     path = job_receipt_path(project, job_id)
     try:
-        _write_receipt(receipt, str(path), project.root)
+        _write_receipt(receipt, str(path), project.root, overwrite=True)
     except Exception as exc:
         logger.warning("Repurpose release receipt publication failed", exc_info=True)
         try:
-            path.unlink(missing_ok=True)
+            if _owns_operation_output(str(path.resolve())):
+                path.unlink(missing_ok=True)
         except OSError:
             logger.warning("Repurpose release receipt withdrawal failed", exc_info=True)
         raise MCPVideoError(

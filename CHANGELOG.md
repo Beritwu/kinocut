@@ -15,6 +15,38 @@ This project follows a simple release-note style:
 
 - Add an opt-in exact probe: `kino info <file> --exact`, `Client.info(path, exact=True)` and MCP `video_info(input_path, exact=true)` additionally report `frame_count` (decoded with ffprobe `-count_frames`), `frame_count_source: "decoded"`, and the raw `r_frame_rate` / `avg_frame_rate` strings exactly as ffprobe reports them. Values that cannot be measured (for example a `0/1` rate) are `null`, never a default. The default `info` output and cost are unchanged; the exact mode decodes the whole video stream and uses a longer probe timeout.
 
+## 1.16.4 - 2026-10-23
+
+### Security
+
+- Disable optional vision provider calls by default, even with inherited credentials. Operators must explicitly select `KINOCUT_VISION_MODE=local` or `remote`; `off` disables both legacy adapters. Local product descriptions require a loopback endpoint and disable environment proxies, redirects and cloud fallback.
+- Keep the separate fixed Anthropic QC worker unavailable for local/custom product routes. Neither `use_ai` nor `require_vlm` grants network permission.
+- Disable Revideo telemetry for installation and rendering unless the operator explicitly sets `KINOCUT_REVIDEO_TELEMETRY=true`.
+- Suppress Hyperframes telemetry, passive update checks and automatic skill installation in both command and preview processes. Remove inherited provider credentials and skip upstream captions/analysis during capture, snapshots and stills; use host image inspection instead.
+- Require explicit Hyperframes telemetry consent for Docker rendering and browser previews outside verified versions 0.8.104/0.8.140; rejected previews leave existing previews running.
+
+### Changed
+
+- Document provider-neutral review through the host's configured image tools and the limits of the legacy provider adapters. Correct the disclosure: product descriptions and optional semantic QC can send frames; FFmpeg color grading is local.
+- Existing users of legacy provider calls must explicitly opt in after upgrading. Tool names and signatures remain compatible.
+
+## 1.16.3 - 2026-10-23
+
+### Security
+
+- Refuse existing outputs unless the caller explicitly supplies MCP/Python `overwrite=true` or CLI `--overwrite`. Existing non-media files require inode evidence that Kinocut created them for the same job; agent configuration homes remain protected.
+- Publish new files without replacing a destination created during rendering, and apply artifact guards to saved plans, receipts, font/model caches and HLS playlists.
+
+### Changed
+
+- Retain durable receipt/shorts-plan ownership witnesses across worker restarts. Older artifacts without witnesses stay protected; create a new job instead of adopting or replacing them.
+- Remove secondary installers from plugin skills, disclose optional network access, and document a small Hermes tool allowlist to reduce per-request schemas.
+
+### Fixed
+
+- Check completed project destinations, including symlink redirects into protected agent homes.
+- Preserve MCP request-context annotations and progress reporting on Python 3.14 without exposing context in tool input schemas.
+
 ## 1.16.2 - 2026-10-21
 
 ### Added

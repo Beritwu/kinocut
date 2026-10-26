@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import uuid
 import subprocess
 import sys
 import time
@@ -102,7 +103,7 @@ class GroundTruthRun:
         self.kino_cmd = kino_cmd
         self.run_dir = run_dir
         self.writer = ReceiptWriter(run_dir)
-        self.artifacts_dir = run_dir / "artifacts"
+        self.artifacts_dir = run_dir / "artifacts" / str(uuid.uuid4())
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
         self.clip = REPO_ROOT / scenario["clip"]["path"]
         self.tier_cfg = endpoints["tiers"]["cli-ground-truth"]

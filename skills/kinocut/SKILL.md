@@ -7,7 +7,7 @@ description: Use when an agent must edit local video safely. Kinocut guards plan
 
 Use Kinocut when an agent needs a structured video-editing surface instead of hand-writing FFmpeg commands. It exposes MCP tools, a Python client, and a CLI for editing, analysis, subtitles, audio, Hyperframes, layered compositing, and local repurposing workflows.
 
-Published 1.16.2 and the matching development checkout have 203 MCP tools / 177 CLI commands; inspect the installed schemas before using development additions.
+Published 1.16.4 and the matching development checkout have 203 MCP tools / 177 CLI commands; inspect the installed schemas before using development additions.
 Desktop-local execution is available; native Android/iOS clients and a complete
 browser processing application remain unimplemented. Recommended service/client
 work is described in `docs/PLATFORM_PARITY.md`.
@@ -24,13 +24,36 @@ Depth (rescue, salvage, composite, Hyperframes, thin sound S12): `docs/TOOLS.md`
 
 Load the relevant guide when needed. Use source evidence for editorial choices; preserve names, numbers, negation, and qualifications. Report missing evidence or unsupported actions instead of inventing source claims, timestamps, or capabilities. A planning tool proposes an edit; its existence does not mean the required detector or model has run. Code owns timing, transforms, validation, and execution; human review remains separate from model judgment.
 
-## Revideo local code-video flow (published 1.16.2)
+## Vision review and network permission (1.16.4)
+
+Keep `KINOCUT_VISION_MODE=off` (the default). Prepare images with `video_thumbnail`
+or `video_qc_vision`, then use the host's configured vision model to inspect them.
+Use `image_analyze_product(use_ai=false)` for local colors. The host owns local or
+hosted inference and fallback; Kinocut's MCP process does not inherit that routing.
+Keep host observations separate from Kinocut's unevaluated semantic QC status.
+Do not invent a visual pass when no model or human has inspected the frames.
+
+The optional legacy product adapter requires explicit operator `local` or
+`remote` mode and speaks the Anthropic-compatible Messages protocol. Local mode
+requires a loopback endpoint and never enables the separate fixed cloud QC
+worker. Credentials and tool arguments cannot override `off`. See
+`docs/VISION_PRIVACY.md` before enabling either adapter.
+
+Hyperframes telemetry and passive update checks default off. Kinocut removes known
+provider credentials from its child environment and disables implicit capture/snapshot
+model analysis. With telemetry off, previews require verified CLI 0.8.104 or 0.8.140.
+Docker rendering and other preview versions require explicit operator telemetry consent;
+do not enable consent on the operator's behalf. These controls do not sandbox project
+assets or requested network access. See the vision/network policy for the limits.
+
+## Revideo local code-video flow (published 1.16.4)
 
 Use `revideo_materialize`, `revideo_install`, and `revideo_render` when the
 caller needs an inspectable staged project. Use `revideo_render_job` for the
 same guarded steps in one call. A supplied scene is trusted executable
 TypeScript: inspect it before use and never run untrusted scene code. Dependency
-installation may access npm; rendering runs locally against Kinocut's pinned
+installation may access npm. From 1.16.4, telemetry defaults off; only explicit
+operator `KINOCUT_REVIDEO_TELEMETRY=true` enables it. Rendering runs locally against Kinocut's pinned
 template. The render receipt binds observed media and output bytes to the exact
 bounded on-disk job-file digest. `.mp4`, `.webm`, and `.mov` select pinned MP4,
 WebM, and ProRes 4444 exporter modes and are verified before publication. Verify the receipt against the output bytes, run `video_quality_check`
@@ -56,7 +79,7 @@ Use when the source is a **stitched equirect 360 MP4** from any camera (Insta360
 3. `video_review_decide` / `Client.decide_360_assembly` with `approve` or `reject`.
 4. Render only an approved plan (`Client.render_360_assembly` or `video_review_decide` + `output_path`).
 
-There is no `video_360_*` MCP tool and no `kino 360` command. In published 1.16.2, `kino intent reformat_vertical --goal "desk 360 split 9:16" --source PATH`
+There is no `video_360_*` MCP tool and no `kino 360` command. In published 1.16.4, `kino intent reformat_vertical --goal "desk 360 split 9:16" --source PATH`
 also proposes a nested `sphere_plan`. Save that plan as its own JSON artifact;
 after actual human review, `kino review-decide PLAN.json accept --output OUTPUT`
 approves and renders it. `reject` never renders; changed source identity blocks
@@ -64,7 +87,7 @@ rendering. Director hooks accept an injected JSON proposer; a configured model
 name alone does not execute a model. Cloud proposals require `allow_cloud`;
 directors never write pixels.
 
-## Published 1.16.2 operator parity
+## Published 1.16.4 operator parity
 
 - Timed audio: `video_mix_audio`, CLI `mix-audio --sounds JSON`, and
   `Client.mix_audio` use one AAC encode and copy the picture. Gains can clip;
@@ -84,9 +107,9 @@ directors never write pixels.
   `Client.estimate_operation` return local heuristics, dimensionless cost units,
   and no billing currency. Do not present them as measured cloud latency/cost.
 
-## Product / object matte (published in 1.15.1; current in 1.16.2)
+## Product / object matte (published in 1.15.1; current in 1.16.4)
 
-The optional object-matte extra is available in published 1.16.2. Use the **existing** `hyperframes-remove-background` / `hyperframes_remove_background` command. Default model is people. For catalog SKUs, jewelry, bottles, shoes, packaging, or anything that is not a person:
+The optional object-matte extra is available in published 1.16.4. Use the **existing** `hyperframes-remove-background` / `hyperframes_remove_background` command. Default model is people. For catalog SKUs, jewelry, bottles, shoes, packaging, or anything that is not a person:
 
 1. `hyperframes_remove_background(info=true)` — lists models, no download.
 2. `pip install "kinocut[object-matte]"` then `model="birefnet-general"`.
@@ -295,6 +318,18 @@ plan = video.composite_layers(
 ```
 
 ## Guardrails
+
+Existing outputs require explicit `overwrite=true` for MCP or `overwrite=True`
+for Python client calls; the CLI uses `kino --overwrite COMMAND ...`. Consent
+permits existing media replacement. Existing non-media files remain protected
+unless Kinocut created them in the same job, and agent config homes remain
+protected. Prefer new output paths.
+
+Use one writer per output directory; these guards do not protect against
+concurrent replacement by another process. Finish old workers before upgrading.
+Durable jobs require hard-link ownership evidence; keep hidden ownership
+directories with their jobs and start new jobs for legacy receipts without it.
+See `../../docs/TOOLS.md#upgrading-existing-jobs` before moving or resuming jobs.
 
 - Do not publish or hand off media without a quality check and human review.
 - Prefer structured Kinocut tools over raw FFmpeg shell commands; use `composite-layers`/`video_composite_layers` for ordered layer stacks instead of hand-written filtergraphs.

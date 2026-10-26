@@ -37,6 +37,9 @@ class _ContractFastMCP(FastMCP):
     """Reject undeclared top-level arguments before a handler executes."""
 
     def add_tool(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
+        from .output_policy import with_output_policy
+
+        fn = with_output_policy(fn)
         super().add_tool(fn, *args, **kwargs)
         name = kwargs.get("name") or (args[0] if args else None) or fn.__name__
         tool = self._tool_manager.get_tool(name)

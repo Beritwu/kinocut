@@ -4,6 +4,38 @@ kino's development tip exposes **203 registered MCP tools / 177 CLI commands** a
 
 ---
 
+## Output overwrite policy
+
+MCP calls accept a strict boolean `overwrite` parameter, defaulting to `false`.
+An existing output requires an explicit `overwrite=true`. This allows replacing
+existing media; pre-existing JSON, text, CSV, TypeScript and other non-media files
+stay protected. Non-media output can only be replaced when Kinocut created the
+current file in the same job, with consent. Hermes and other agent configuration
+homes remain protected even with consent. Source/output alias guards still apply.
+Prefer a new output path. Python client calls accept the same `overwrite=True`
+keyword; the CLI uses `kino --overwrite COMMAND ...`.
+
+Use an output directory with one writer at a time. The overwrite checks do not
+guarantee preservation against another process replacing a target between
+validation and publication. Atomic receipt updates retain complete old-or-new
+JSON; do not run competing jobs against the same output or receipt paths.
+
+### Upgrading existing jobs
+
+Finish existing workers with their original runtime before switching versions.
+Durable render receipts and shorts plans now retain inode ownership evidence in
+hidden `.<filename>.ownership` directories. Legacy jobs without this evidence
+cannot be resumed or updated by the new runtime; start a new job instead of
+adopting the old receipt. Preserve ownership directories with their jobs, and
+verify restart after any backup or move: copying visible JSON alone, or a copy
+that changes hard-link relationships, loses the proof. Historical receipt inodes
+remain retained; this release does not prune them automatically.
+
+Publication and durable ownership require filesystem hard-link support. Use a
+supported local filesystem and verify it before a long job. Network, cloud-sync
+and removable filesystems are not assumed compatible; do not bypass a failed
+publication check with a direct file copy.
+
 ## Project-backed Inspection (3 tools)
 
 These operations share one adapter with the Python client and CLI. Only ingest accepts a
@@ -91,14 +123,26 @@ proof of viewing or release approval. Agents must never invent the human inputs.
 `sampling_status` separately from `assessment_status`; preparing frames does not
 establish visual quality. With no executable VLM scorer, complete sampling returns
 `verdict="not_evaluated"` and incomplete sampling returns `"inconclusive"`.
-Setting `require_vlm=true` returns `verdict="fail"` and `blocked=true`. Installing
-a provider SDK alone does not make visual assessment available. Explicitly setting
-`KINOCUT_VISION_MODEL` and `ANTHROPIC_API_KEY` opts into one paid Anthropic request
-for the sampled frames. The request runs in an isolated worker with an elapsed
+Setting `require_vlm=true` fails closed when assessment is unavailable; it never
+grants network permission. `KINOCUT_VISION_MODE=off` is the default, including
+when credentials are present. Prefer inspecting the retained frames through the
+host's configured vision model. The legacy QC worker requires explicit
+`KINOCUT_VISION_MODE=remote`, `KINOCUT_VISION_MODEL` and `ANTHROPIC_API_KEY`, and
+no `KINOCUT_VISION_BASE_URL`. It sends sampled frame bytes and a prompt to
+Anthropic. Local/custom product endpoints cannot activate this separate cloud
+worker. The request runs in an isolated worker with an elapsed
 deadline and byte ceilings; malformed or incomplete responses fail closed. This
 does not approve the whole film or establish model accuracy. See
 [quality evidence](QUALITY_EVIDENCE.md) for waveform, objective visual measurement
 and perceptual voice limits.
+
+`image_analyze_product(use_ai=false)` extracts colors locally. Its optional
+description adapter also defaults off. `KINOCUT_VISION_MODE=local` permits only
+a loopback `KINOCUT_VISION_BASE_URL` with the Anthropic-compatible Messages
+protocol; configure `KINOCUT_VISION_MODEL` for that server. Local requests ignore
+environment proxies, reject redirects and do not fall back to cloud. `remote`
+explicitly permits hosted endpoints. These legacy adapters do not inherit the
+host's provider routing. See [vision and network controls](VISION_PRIVACY.md).
 
 Published controls also include `video_convert(two_pass=true,
 target_bitrate=KBPS)` for MP4/MOV, `video_fade(crf=...)`, and
@@ -267,6 +311,11 @@ before enabling optional backends.
 ---
 
 ## Hyperframes — HTML-Native Video (18 tools)
+
+Telemetry defaults off. Browser previews require verified Hyperframes 0.8.104 or
+0.8.140; Docker renders and previews on other versions require explicit
+`KINOCUT_HYPERFRAMES_TELEMETRY=true`. This consent does not enable provider
+captions or image analysis. See [vision and network controls](VISION_PRIVACY.md).
 
 Relative render and requested still output paths resolve from the caller working
 directory. A requested still output is atomically copied independently of mutable
@@ -471,7 +520,7 @@ CPU-based glitch effects run entirely through FFmpeg. GPU-accelerated effects (m
 |------|-------------|
 | `image_extract_colors` | Extract dominant colors from an image or video frame via K-means clustering (1-20 colors) |
 | `image_generate_palette` | Generate color harmony palette from an image or video frame |
-| `image_analyze_product` | Analyze a product image or video frame — extract colors + optional AI description (Claude Vision) |
+| `image_analyze_product` | Extract colors locally; optional legacy provider description requires explicit vision mode consent |
 
 ## Still / plate editor (5 tools)
 

@@ -36,7 +36,9 @@ def probe_360_source(path: str) -> dict[str, Any]:
     resolved = _validate_input_path(path)
     digest = _file_sha256(resolved)
     width, height, duration, spherical, tag_blob = _probe_geometry(resolved)
-    if _file_sha256(resolved) != digest:
+    # Equal-size writes can share stat markers on coarse filesystems. This
+    # boundary must compare current bytes rather than reusing the hash cache.
+    if stream_source_identity(resolved).asset_id != digest:
         raise MCPVideoError(
             "360 source changed while probing", error_type="validation_error", code="source_identity_changed"
         )

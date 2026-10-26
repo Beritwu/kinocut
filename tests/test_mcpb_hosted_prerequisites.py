@@ -89,10 +89,14 @@ def test_all_hosted_rows_provision_and_validate_native_ffmpeg_pair() -> None:
     clean, remainder = workflow.split("  optional-present:", 1)
     optional = remainder.split("  aggregate:", 1)[0]
 
-    assert "matrix.os == 'linux'" in clean and "apt-get install" in clean
+    installer = (ROOT / ".github" / "scripts" / "install-ffmpeg-ubuntu.sh").read_text(encoding="utf-8")
+    install_command = "bash .github/scripts/install-ffmpeg-ubuntu.sh"
+    assert "matrix.os == 'linux'" in clean and install_command in clean
     assert "matrix.os == 'macos'" in clean and "brew install ffmpeg" in clean
     assert "matrix.os == 'windows'" in clean and "choco install" in clean
-    assert "apt-get install" in optional
+    assert install_command in optional
+    assert 'apt-get "${apt_options[@]}" install' in installer
+    assert "--yes --no-install-recommends ffmpeg" in installer
 
     for section in (clean, optional):
         assert 'shutil.which("ffmpeg")' in section

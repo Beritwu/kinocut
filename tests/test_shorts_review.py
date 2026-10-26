@@ -9,6 +9,9 @@ from kinocut.product.models import CandidateMoment, TranscriptSegment, canonical
 from kinocut.product.shorts_plan import IntakeReport, ShortsPlan, load_shorts_plan, save_shorts_plan
 from kinocut.product.shorts_review import resolve_approved_candidate, review_shorts_plan
 
+# These cases explicitly authorize updates to job-created review plans.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def _candidate(**updates) -> CandidateMoment:
     values = {

@@ -11,6 +11,12 @@ from typing import Any
 import os
 from urllib.parse import urlparse
 
+from .defaults import (
+    DEFAULT_PRODUCT_DESCRIPTION_MAX_TOKENS,
+    DEFAULT_VISION_BASE_URL,
+    DEFAULT_VISION_MODEL,
+    DEFAULT_VISION_PROVIDER_TIMEOUT,
+)
 from .errors import MCPVideoError
 from .image_models import (
     ColorExtractionResult,
@@ -23,15 +29,10 @@ from .image_models import (
 SUPPORTED_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".tif", ".webp"})
 MAX_IMAGE_PIXELS = 50_000_000  # ~50 MP (e.g. 7168x7168); guards against decompression bombs (H5)
 
-# Local-first hardening (workstream C, 2026-09-19): the AI description is the one
-# cloud-API call in the package. These env/param hooks give it a LOCAL endpoint path
-# (local endpoints: LM Studio, llama-server, any Anthropic-compatible gateway)
-# without changing the cloud default: still opt-in via use_ai, still fail-closed.
-# Pattern replicated from the 360 sphere director (te/sphere_director.py) — the
-# workstream-C exemplar.
+# Legacy Anthropic-compatible description adapter. Permission is independent
+# of endpoint configuration and credentials; host image inspection needs neither.
 ENV_VISION_BASE_URL = "KINOCUT_VISION_BASE_URL"
 ENV_VISION_MODEL = "KINOCUT_VISION_MODEL"
-DEFAULT_VISION_MODEL = "claude-sonnet-4-20250514"
 _LOCAL_VISION_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
@@ -49,8 +50,13 @@ def resolve_vision_endpoint(
     resolved_model = (model or os.environ.get(ENV_VISION_MODEL) or "").strip() or None
     kind = None
     if resolved_url:
-        host = (urlparse(resolved_url).hostname or "").lower()
-        scheme = (urlparse(resolved_url).scheme or "").lower()
+        parsed = urlparse(resolved_url)
+        host = (parsed.hostname or "").lower()
+        scheme = (parsed.scheme or "").lower()
+        if not host or scheme not in {"http", "https"} or parsed.username or parsed.password:
+            raise MCPVideoError(
+                "Vision endpoint must be an HTTP(S) URL without credentials", error_type="validation_error"
+            )
         if host not in _LOCAL_VISION_HOSTS:
             if scheme != "https":
                 raise MCPVideoError(
@@ -151,9 +157,10 @@ def _extract_frame_if_video(path: str) -> str:
     if ext not in VIDEO_EXTENSIONS:
         return path
     from .engine_thumbnail import thumbnail
+    import secrets
     import tempfile
 
-    frame_path = os.path.join(tempfile.gettempdir(), f"mcp_video_frame_{os.path.basename(path)}.jpg")
+    frame_path = os.path.join(tempfile.gettempdir(), f"mcp_video_frame_{secrets.token_hex(16)}.jpg")
     result = thumbnail(path, output_path=frame_path)
     return result.frame_path
 
@@ -372,6 +379,11 @@ def generate_palette(
     )
 
 
+def _strip_vision_bearer_auth(request: Any) -> None:
+    """This API-key adapter must never send an SDK-discovered bearer credential."""
+    request.headers.pop("Authorization", None)
+
+
 def _describe_product_with_vision(
     image_path: str,
     base_url: str | None = None,
@@ -379,12 +391,20 @@ def _describe_product_with_vision(
 ) -> str:
     """Return an AI text description of ``image_path`` (opt-in vision call).
 
-    ``base_url``/``model`` (or ``KINOCUT_VISION_BASE_URL``/``KINOCUT_VISION_MODEL``)
-    route the call at a local Anthropic-compatible endpoint — workstream C
-    local-first path; cloud remains the default when unset. Credentials are
-    resolved at runtime via :func:`_resolve_vision_api_key` (BYOK, fail-closed;
-    no literal is ever stored here).
+    KINOCUT_VISION_MODE must explicitly permit this route. Local endpoints use
+    the legacy Anthropic-compatible protocol, with no proxy, redirect or retry.
     """
+    from .vision_policy import require_vision_provider
+
+    endpoint = resolve_vision_endpoint(base_url, model)
+    require_vision_provider(endpoint["endpoint_kind"])
+    if os.environ.get("ANTHROPIC_CUSTOM_HEADERS", "").strip():
+        raise MCPVideoError(
+            "The vision adapter does not accept ANTHROPIC_CUSTOM_HEADERS; unset it to prevent inherited "
+            "credentials or headers from reaching a different endpoint.",
+            error_type="validation_error",
+            code="unsafe_vision_headers",
+        )
     try:
         import anthropic
     except ImportError:
@@ -399,19 +419,36 @@ def _describe_product_with_vision(
         ) from None
 
     import base64
+    import httpx
     import mimetypes
 
-    endpoint = resolve_vision_endpoint(base_url, model)
     api_key = _resolve_vision_api_key(endpoint)
 
     mime_type = mimetypes.guess_type(image_path)[0] or "image/jpeg"
     with open(image_path, "rb") as f:
         img_data = base64.b64encode(f.read()).decode("utf-8")
 
-    client = anthropic.Anthropic(api_key=api_key, base_url=endpoint["base_url"])
+    with httpx.Client(
+        trust_env=endpoint["endpoint_kind"] != "local",
+        follow_redirects=False,
+        event_hooks={"request": [_strip_vision_bearer_auth]},
+    ) as transport:
+        client = anthropic.Anthropic(
+            api_key=api_key,
+            auth_token="",
+            base_url=endpoint["base_url"] or DEFAULT_VISION_BASE_URL,
+            http_client=transport,
+            max_retries=0,
+            timeout=DEFAULT_VISION_PROVIDER_TIMEOUT,
+        )
+        return _request_product_description(client, endpoint["model"], mime_type, img_data)
+
+
+def _request_product_description(client: Any, model: str, mime_type: str, img_data: str) -> str:
+    """One bounded description request; never select a fallback provider."""
     response = client.messages.create(
-        model=endpoint["model"],
-        max_tokens=300,
+        model=model,
+        max_tokens=DEFAULT_PRODUCT_DESCRIPTION_MAX_TOKENS,
         messages=[
             {
                 "role": "user",
@@ -446,8 +483,8 @@ def analyze_product(
     """Analyze a product image — colors + optional AI description.
 
     ``base_url``/``model`` (or ``KINOCUT_VISION_BASE_URL``/``KINOCUT_VISION_MODEL``)
-    route the opt-in AI description at a local Anthropic-compatible endpoint —
-    workstream C local-first path; cloud remains the default when unset.
+    configure the legacy Anthropic-compatible adapter. Provider execution is off
+    unless KINOCUT_VISION_MODE explicitly permits the selected route.
     """
     _require_image_deps()
     _validate_image(image_path)

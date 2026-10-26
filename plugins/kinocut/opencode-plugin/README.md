@@ -8,7 +8,7 @@ Add the Kinocut MCP server to `opencode.json`:
   "mcp": {
     "kinocut": {
       "type": "local",
-      "command": ["uvx", "kinocut==1.16.2"],
+      "command": ["uvx", "kinocut==1.16.4"],
       "enabled": true
     }
   }

@@ -490,11 +490,14 @@ def video_timeline_ir_validate(timeline: dict[str, Any]) -> dict[str, Any]:
 @mcp.tool()
 @_safe_tool
 def video_qc_vision(input_path: str, require_vlm: bool = False) -> dict[str, Any]:
-    """Prepare keyframes for visual review; semantic vision QC is not evaluated.
+    """Prepare keyframes for visual review; provider assessment is disabled by default.
 
     Returns retained frame paths, sampling_status and assessment_status. Frame
-    preparation is not a visual-quality pass. No executable VLM is available;
-    require_vlm=True returns verdict=fail and blocked=True.
+    preparation is not a visual-quality pass. Inspect retained frames with your
+    host's vision model. Legacy remote assessment requires KINOCUT_VISION_MODE=remote,
+    KINOCUT_VISION_MODEL and ANTHROPIC_API_KEY, with no KINOCUT_VISION_BASE_URL.
+    With assessment unavailable, require_vlm=True fails closed; it never grants
+    permission to call a provider. This worker does not inherit host routing.
     """
 
     from kinocut.watching import run_vision_qc

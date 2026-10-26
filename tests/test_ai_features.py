@@ -1616,10 +1616,11 @@ def test_validate_analysis_output_paths_blocks_system_prefixes():
         )
 
 
-def test_validate_analysis_output_paths_allows_safe_paths(tmp_path):
+def test_validate_analysis_output_paths_allows_safe_paths(tmp_path, monkeypatch):
     """_validate_analysis_output_paths allows normal user / tmp paths."""
     from mcp_video.ai_engine import _validate_analysis_output_paths
 
+    monkeypatch.chdir(tmp_path)
     _validate_analysis_output_paths(
         output_srt=str(tmp_path / "transcript.srt"),
         output_txt=str(tmp_path / "out.txt"),

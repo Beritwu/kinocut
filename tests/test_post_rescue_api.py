@@ -167,4 +167,5 @@ def test_client_introspection_declares_post_rescue_methods_as_planning_reports()
 
     assert contract["category"] == "planning"
     assert contract["return_type"] == "dict"
-    assert contract["parameters"] == {"request": "Request"}
+    assert "Mapping" in contract["parameters"]["request"]
+    assert "bool" in contract["parameters"]["overwrite"]

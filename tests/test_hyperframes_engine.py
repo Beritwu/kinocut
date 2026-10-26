@@ -242,7 +242,7 @@ class TestValidateProject:
 class TestRender:
     """Tests for render()."""
 
-    def test_builds_correct_cli_args(self, sample_hyperframes_project):
+    def test_builds_correct_cli_args(self, sample_hyperframes_project, tmp_path):
         """render() should invoke Hyperframes with the right arguments."""
         project = str(sample_hyperframes_project)
         fake_cp = _make_completed_process(stdout="Rendered.")
@@ -255,7 +255,7 @@ class TestRender:
         ):
             render(
                 project,
-                output_path="/tmp/out.mp4",
+                output_path=str(tmp_path / "out.mp4"),
                 fps=30,
                 quality="standard",
                 format="mp4",
@@ -267,7 +267,7 @@ class TestRender:
             assert "npx" not in cmd[:3]
             assert "--no-install" not in cmd
             assert "render" in cmd
-            assert "/tmp/out.mp4" in cmd
+            assert str(tmp_path / "out.mp4") in cmd
             assert "--fps" in cmd
             idx = cmd.index("--fps")
             assert cmd[idx + 1] == "30"
@@ -275,7 +275,7 @@ class TestRender:
             idx = cmd.index("--quality")
             assert cmd[idx + 1] == "standard"
 
-    def test_formats_integral_float_fps_without_decimal(self, sample_hyperframes_project):
+    def test_formats_integral_float_fps_without_decimal(self, sample_hyperframes_project, tmp_path):
         """render() should not pass 30.0 because Hyperframes rejects decimal fps."""
         project = str(sample_hyperframes_project)
         fake_cp = _make_completed_process(stdout="Rendered.")
@@ -286,13 +286,13 @@ class TestRender:
             patch("os.path.isfile", return_value=True),
             patch("os.path.getsize", return_value=1024 * 1024),
         ):
-            render(project, output_path="/tmp/out.mp4", fps=30.0, format="mp4")
+            render(project, output_path=str(tmp_path / "out.mp4"), fps=30.0, format="mp4")
 
             cmd = mock_run.call_args[0][0]
             idx = cmd.index("--fps")
             assert cmd[idx + 1] == "30"
 
-    def test_preserves_non_integral_float_fps(self, sample_hyperframes_project):
+    def test_preserves_non_integral_float_fps(self, sample_hyperframes_project, tmp_path):
         """render() should pass non-integral FPS values through unchanged."""
         project = str(sample_hyperframes_project)
         fake_cp = _make_completed_process(stdout="Rendered.")
@@ -303,13 +303,13 @@ class TestRender:
             patch("os.path.isfile", return_value=True),
             patch("os.path.getsize", return_value=1024 * 1024),
         ):
-            render(project, output_path="/tmp/out.mp4", fps=29.97, format="mp4")
+            render(project, output_path=str(tmp_path / "out.mp4"), fps=29.97, format="mp4")
 
             cmd = mock_run.call_args[0][0]
             idx = cmd.index("--fps")
             assert cmd[idx + 1] == "29.97"
 
-    def test_passes_all_optional_args(self, sample_hyperframes_project):
+    def test_passes_all_optional_args(self, sample_hyperframes_project, tmp_path):
         """render() should forward render options supported by Hyperframes CLI."""
         project = str(sample_hyperframes_project)
         fake_cp = _make_completed_process(stdout="done")
@@ -322,7 +322,7 @@ class TestRender:
         ):
             result = render(
                 project,
-                output_path="/tmp/out.mp4",
+                output_path=str(tmp_path / "out.mp4"),
                 fps=60,
                 width=1080,
                 height=1920,
@@ -334,7 +334,7 @@ class TestRender:
                 crf=18,
             )
 
-            assert result.output_path == "/tmp/out.mp4"
+            assert result.output_path == str(tmp_path / "out.mp4")
             assert result.codec == "webm"
             assert result.resolution == "1080x1920"
             cmd = mock_run.call_args[0][0]
@@ -343,7 +343,7 @@ class TestRender:
             assert "--width" not in cmd
             assert "--height" not in cmd
 
-    def test_render_serializes_inline_variables(self, sample_hyperframes_project):
+    def test_render_serializes_inline_variables(self, sample_hyperframes_project, tmp_path):
         """render() should pass inline runtime data as JSON to Hyperframes."""
         project = str(sample_hyperframes_project)
         fake_cp = _make_completed_process(stdout="done")
@@ -354,7 +354,7 @@ class TestRender:
             patch("os.path.isfile", return_value=True),
             patch("os.path.getsize", return_value=2 * 1024 * 1024),
         ):
-            render(project, output_path="/tmp/out.mp4", variables={"title": "Launch", "count": 3})
+            render(project, output_path=str(tmp_path / "out.mp4"), variables={"title": "Launch", "count": 3})
 
         cmd = mock_run.call_args[0][0]
         assert cmd[cmd.index("--variables") + 1] == '{"count":3,"title":"Launch"}'
@@ -372,12 +372,12 @@ class TestRender:
             patch("os.path.isfile", return_value=True),
             patch("os.path.getsize", return_value=2 * 1024 * 1024),
         ):
-            render(project, output_path="/tmp/out.mp4", variables_file=str(variables_file))
+            render(project, output_path=str(tmp_path / "out.mp4"), variables_file=str(variables_file))
 
         cmd = mock_run.call_args[0][0]
         assert cmd[cmd.index("--variables-file") + 1] == str(variables_file)
 
-    def test_render_validates_variables_file(self, sample_hyperframes_project):
+    def test_render_validates_variables_file(self, sample_hyperframes_project, tmp_path):
         """render() should reject missing variables_file before subprocess execution."""
         project = str(sample_hyperframes_project)
 
@@ -386,11 +386,11 @@ class TestRender:
             patch("mcp_video.hyperframes_engine.subprocess.run") as mock_run,
             pytest.raises(InputFileError),
         ):
-            render(project, output_path="/tmp/out.mp4", variables_file="/tmp/missing-variables.json")
+            render(project, output_path=str(tmp_path / "out.mp4"), variables_file="/tmp/missing-variables.json")
 
         mock_run.assert_not_called()
 
-    def test_raises_on_nonzero_exit(self, sample_hyperframes_project):
+    def test_raises_on_nonzero_exit(self, sample_hyperframes_project, tmp_path):
         """render() should raise HyperframesRenderError on non-zero exit."""
         project = str(sample_hyperframes_project)
         fake_cp = _make_completed_process(
@@ -403,9 +403,9 @@ class TestRender:
             patch("mcp_video.hyperframes_engine.subprocess.run", return_value=fake_cp),
             pytest.raises(HyperframesRenderError, match="exit code 1"),
         ):
-            render(project, output_path="/tmp/out.mp4")
+            render(project, output_path=str(tmp_path / "out.mp4"))
 
-    def test_sets_resolution_when_both_width_and_height(self, sample_hyperframes_project):
+    def test_sets_resolution_when_both_width_and_height(self, sample_hyperframes_project, tmp_path):
         """render() should map legacy 1920x1080 dimensions to Hyperframes resolution."""
         project = str(sample_hyperframes_project)
         fake_cp = _make_completed_process(stdout="ok")
@@ -418,7 +418,7 @@ class TestRender:
         ):
             result = render(
                 project,
-                output_path="/tmp/out.mp4",
+                output_path=str(tmp_path / "out.mp4"),
                 width=1920,
                 height=1080,
             )
@@ -426,29 +426,29 @@ class TestRender:
             cmd = mock_run.call_args[0][0]
             assert cmd[cmd.index("--resolution") + 1] == "landscape"
 
-    def test_rejects_unmapped_legacy_dimensions_instead_of_silent_noop(self, sample_hyperframes_project):
+    def test_rejects_unmapped_legacy_dimensions_instead_of_silent_noop(self, sample_hyperframes_project, tmp_path):
         """render() should not claim arbitrary dimensions that Hyperframes CLI cannot apply."""
         with (
             _mock_deps_ok(),
             patch("mcp_video.hyperframes_engine.subprocess.run") as mock_run,
             pytest.raises(MCPVideoError, match="only supports width/height pairs"),
         ):
-            render(str(sample_hyperframes_project), output_path="/tmp/out.mp4", width=1280, height=720)
+            render(str(sample_hyperframes_project), output_path=str(tmp_path / "out.mp4"), width=1280, height=720)
 
         mock_run.assert_not_called()
 
-    def test_rejects_incomplete_legacy_dimensions(self, sample_hyperframes_project):
+    def test_rejects_incomplete_legacy_dimensions(self, sample_hyperframes_project, tmp_path):
         """render() should not silently ignore a lone width or height."""
         with (
             _mock_deps_ok(),
             patch("mcp_video.hyperframes_engine.subprocess.run") as mock_run,
             pytest.raises(MCPVideoError, match="width and height must be provided together"),
         ):
-            render(str(sample_hyperframes_project), output_path="/tmp/out.mp4", width=1920)
+            render(str(sample_hyperframes_project), output_path=str(tmp_path / "out.mp4"), width=1920)
 
         mock_run.assert_not_called()
 
-    def test_rejects_conflicting_dimensions_and_resolution(self, sample_hyperframes_project):
+    def test_rejects_conflicting_dimensions_and_resolution(self, sample_hyperframes_project, tmp_path):
         """render() should not report dimensions that conflict with the requested preset."""
         with (
             _mock_deps_ok(),
@@ -457,7 +457,7 @@ class TestRender:
         ):
             render(
                 str(sample_hyperframes_project),
-                output_path="/tmp/out.mp4",
+                output_path=str(tmp_path / "out.mp4"),
                 width=1920,
                 height=1080,
                 resolution="portrait",
@@ -465,7 +465,7 @@ class TestRender:
 
         mock_run.assert_not_called()
 
-    def test_resolution_is_none_when_dimensions_missing(self, sample_hyperframes_project):
+    def test_resolution_is_none_when_dimensions_missing(self, sample_hyperframes_project, tmp_path):
         """render() should return resolution=None when width/height are not set."""
         project = str(sample_hyperframes_project)
         fake_cp = _make_completed_process(stdout="ok")
@@ -478,7 +478,7 @@ class TestRender:
         ):
             result = render(
                 project,
-                output_path="/tmp/out.mp4",
+                output_path=str(tmp_path / "out.mp4"),
             )
             assert result.resolution is None
 
@@ -809,9 +809,14 @@ class TestPreview:
     """Tests for preview()."""
 
     @pytest.fixture(autouse=True)
-    def _clear_preview_registry(self):
+    def _clear_preview_registry(self, monkeypatch):
         from mcp_video.hyperframes_engine import _active_previews
 
+        monkeypatch.setenv("KINOCUT_HYPERFRAMES_TELEMETRY", "false")
+        monkeypatch.setattr(
+            "mcp_video.hyperframes_engine._run_hyperframes",
+            lambda *a, **kw: _make_completed_process(stdout="0.8.104"),
+        )
         _active_previews.clear()
         yield
         _active_previews.clear()
@@ -888,7 +893,7 @@ class TestPreview:
 class TestStill:
     """Tests for still()."""
 
-    def test_renders_single_frame(self, sample_hyperframes_project):
+    def test_renders_single_frame(self, sample_hyperframes_project, tmp_path):
         """still() should render one snapshot frame with correct args."""
         project = Path(sample_hyperframes_project)
         actual = project / "snapshots" / "frame-00-at-1.4s.png"
@@ -902,11 +907,11 @@ class TestStill:
         with _mock_deps_ok(), patch("mcp_video.hyperframes_engine.subprocess.run", side_effect=fake_run) as mock_run:
             result = still(
                 str(project),
-                output_path="/tmp/frame.png",
+                output_path=str(tmp_path / "frame.png"),
                 frame=42,
             )
 
-            assert result.output_path == "/tmp/frame.png"
+            assert result.output_path == str(tmp_path / "frame.png")
             assert Path(result.output_path).read_bytes() == b"png"
             assert result.frame == 42
 
@@ -1297,7 +1302,7 @@ class TestInitNonInteractiveHang:
             # The parent environment is preserved, not replaced.
             assert "PATH" in kwargs["env"]
 
-    def test_unrelated_commands_do_not_receive_init_flags(self, sample_hyperframes_project):
+    def test_unrelated_commands_do_not_receive_init_flags(self, sample_hyperframes_project, tmp_path):
         """render() (and other commands) must not inherit init-only flags."""
         fake_cp = _make_completed_process(stdout="Rendered.")
         with (
@@ -1306,7 +1311,7 @@ class TestInitNonInteractiveHang:
             patch("os.path.isfile", return_value=True),
             patch("os.path.getsize", return_value=1024 * 1024),
         ):
-            render(str(sample_hyperframes_project), output_path="/tmp/out.mp4", format="mp4")
+            render(str(sample_hyperframes_project), output_path=str(tmp_path / "out.mp4"), format="mp4")
 
             cmd = mock_run.call_args[0][0]
             assert "--skip-transcribe" not in cmd
@@ -1549,7 +1554,7 @@ class TestRenderAndPost:
             )
 
     @patch("mcp_video.hyperframes_engine.shutil.which")
-    def test_type_alias_for_op(self, mock_which, sample_hyperframes_project):
+    def test_type_alias_for_op(self, mock_which, sample_hyperframes_project, tmp_path):
         """render_and_post() should accept 'type' key as alias for 'op'."""
 
         def _which(name: str):
@@ -1563,7 +1568,7 @@ class TestRenderAndPost:
         fake_cp = _make_completed_process(stdout="ok")
 
         mock_result = MagicMock()
-        mock_result.output_path = "/tmp/out.mp4"
+        mock_result.output_path = str(tmp_path / "out.mp4")
 
         with (
             patch("mcp_video.hyperframes_engine.subprocess.run", return_value=fake_cp),
@@ -1589,7 +1594,7 @@ class TestRenderAndPost:
 class TestErrorHandling:
     """Tests for error handling edge cases."""
 
-    def test_render_timeout(self, sample_hyperframes_project):
+    def test_render_timeout(self, sample_hyperframes_project, tmp_path):
         """render() should raise HyperframesRenderError on timeout."""
         project = str(sample_hyperframes_project)
 
@@ -1597,9 +1602,9 @@ class TestErrorHandling:
             mock_run.side_effect = subprocess.TimeoutExpired(cmd="hyperframes", timeout=600)
 
             with pytest.raises(HyperframesRenderError, match="timed out"):
-                render(project, output_path="/tmp/out.mp4")
+                render(project, output_path=str(tmp_path / "out.mp4"))
 
-    def test_render_hyperframes_not_found(self, sample_hyperframes_project):
+    def test_render_hyperframes_not_found(self, sample_hyperframes_project, tmp_path):
         """render() should raise HyperframesNotFoundError when the CLI binary is missing."""
         project = str(sample_hyperframes_project)
 
@@ -1607,22 +1612,22 @@ class TestErrorHandling:
             mock_run.side_effect = FileNotFoundError("hyperframes not found")
 
             with pytest.raises(HyperframesNotFoundError, match="hyperframes command not found"):
-                render(project, output_path="/tmp/out.mp4")
+                render(project, output_path=str(tmp_path / "out.mp4"))
 
-    def test_render_error_has_command_and_returncode(self, sample_hyperframes_project):
+    def test_render_error_has_command_and_returncode(self, sample_hyperframes_project, tmp_path):
         """HyperframesRenderError should carry command and returncode info."""
         project = str(sample_hyperframes_project)
         fake_cp = _make_completed_process(returncode=42, stderr="Bad error")
 
         with _mock_deps_ok(), patch("mcp_video.hyperframes_engine.subprocess.run", return_value=fake_cp):
             with pytest.raises(HyperframesRenderError) as exc_info:
-                render(project, output_path="/tmp/out.mp4")
+                render(project, output_path=str(tmp_path / "out.mp4"))
 
             err = exc_info.value
             assert err.returncode == 42
             assert "42" in err.code  # code should be hyperframes_exit_42
 
-    def test_render_error_truncates_long_stderr(self, sample_hyperframes_project):
+    def test_render_error_truncates_long_stderr(self, sample_hyperframes_project, tmp_path):
         """HyperframesRenderError should preserve full_stderr but truncate message."""
         long_stderr = "x" * 1000
         project = str(sample_hyperframes_project)
@@ -1630,7 +1635,7 @@ class TestErrorHandling:
 
         with _mock_deps_ok(), patch("mcp_video.hyperframes_engine.subprocess.run", return_value=fake_cp):
             with pytest.raises(HyperframesRenderError) as exc_info:
-                render(project, output_path="/tmp/out.mp4")
+                render(project, output_path=str(tmp_path / "out.mp4"))
 
             assert exc_info.value.full_stderr == long_stderr
             assert len(str(exc_info.value)) < len(long_stderr) + 50  # message is truncated
@@ -1773,3 +1778,8 @@ class TestHyperframesIntegration:
         assert result.valid is True
         assert result.issues == []
         assert result.warnings == []
+
+
+@pytest.fixture(autouse=True)
+def _isolated_output_directory(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)

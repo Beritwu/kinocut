@@ -28,6 +28,7 @@ from .defaults import (
     DEFAULT_REVIDEO_OUT_FILE,
     DEFAULT_REVIDEO_RENDER_TIMEOUT,
     DEFAULT_REVIDEO_SEED,
+    DEFAULT_REVIDEO_TELEMETRY,
     DEFAULT_REVIDEO_WIDTH,
     DEFAULT_REVIDEO_WORKERS,
 )
@@ -197,6 +198,8 @@ def _read_scene_source(scene_source: str | Path | None) -> bytes | None:
 
 
 def _validate_materialize_destination(dest: Path) -> None:
+    from .ffmpeg_helpers import _validate_artifact_location
+
     try:
         if dest.is_symlink():
             raise RevideoProjectError(str(dest), "destination must not be a symlink")
@@ -208,6 +211,7 @@ def _validate_materialize_destination(dest: Path) -> None:
         raise
     except OSError as exc:
         raise RevideoProjectError(str(dest), f"destination could not be inspected ({type(exc).__name__})") from exc
+    _validate_artifact_location(str(dest), "Revideo project directory")
 
 
 def materialize_project(dest: str | Path, job: dict[str, Any], scene_source: str | Path | None = None) -> Path:
@@ -307,6 +311,10 @@ def _run_npm(
 ) -> subprocess.CompletedProcess[str]:
     """Run npm with closed stdin and a hard timeout."""
     cmd = ["npm", *args]
+    telemetry = os.environ.get("KINOCUT_REVIDEO_TELEMETRY", str(DEFAULT_REVIDEO_TELEMETRY)).strip().lower()
+    if telemetry not in {"true", "false"}:
+        raise MCPVideoError("KINOCUT_REVIDEO_TELEMETRY must be true or false", error_type="validation_error")
+    child_env = {**os.environ, **(extra_env or {}), "DISABLE_TELEMETRY": str(telemetry != "true").lower()}
     try:
         return subprocess.run(  # noqa: S603
             cmd,
@@ -315,7 +323,7 @@ def _run_npm(
             text=True,
             timeout=timeout,
             stdin=subprocess.DEVNULL,
-            env={**os.environ, **(extra_env or {})},
+            env=child_env,
         )
     except subprocess.TimeoutExpired:
         raise RevideoRenderError(" ".join(cmd), -1, "npm step timed out") from None

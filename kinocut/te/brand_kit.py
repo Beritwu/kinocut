@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from kinocut.errors import MCPVideoError
-from kinocut.ffmpeg_helpers import _validate_artifact_path, _validate_input_path
+from kinocut.ffmpeg_helpers import _atomic_artifact, _open_staged_writer, _validate_input_path
 
 
 @dataclass
@@ -26,10 +26,9 @@ class BrandKit:
 
 
 def save_brand_kit(path: str, kit: BrandKit) -> dict[str, Any]:
-    p = Path(_validate_artifact_path(path))
-    p.parent.mkdir(parents=True, exist_ok=True)
     payload = {"artifact_kind": "brand_kit", **kit.to_dict()}
-    p.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    with _atomic_artifact(path) as staged, _open_staged_writer(staged) as stream:
+        stream.write((json.dumps(payload, indent=2) + "\n").encode("utf-8"))
     return payload
 
 

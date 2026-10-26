@@ -6,7 +6,8 @@ import hashlib
 import json
 import os
 import tempfile
-from contextlib import ExitStack, suppress
+import shutil
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,8 @@ from .defaults import (
 )
 from .errors import InputFileError, MCPVideoError, ProcessingError
 from .ffmpeg_helpers import (
+    _atomic_output,
+    _open_staged_writer,
     _escape_ffmpeg_filter_value,
     _get_video_duration,
     _run_ffmpeg,
@@ -532,56 +535,31 @@ def _guarded_render(
 ) -> PreservationProof:
     """Publish only after anonymous inputs and private workspace are cleaned."""
 
-    staging: Path | None = None
-    staging_fd = -1
-    try:
-        staging_fd, name = tempfile.mkstemp(
-            dir=Path(output_path).parent,
-            prefix=".body-swap.publish.",
-            suffix=Path(output_path).suffix,
-        )
-        staging = Path(name)
-        os.close(staging_fd)
-        staging_fd = -1
-        with (
-            ExitStack() as source_stack,
-            tempfile.TemporaryDirectory(dir=Path(output_path).parent, prefix=".body-swap.") as workspace,
-        ):
-            root = Path(workspace)
-            video = copy_verified_snapshot(
-                video_source,
-                root / f"video{Path(video_source).suffix}",
-                identities[0],
-            )
-            source_stack.callback(video.close)
-            audio = copy_verified_snapshot(
-                audio_source,
-                root / f"audio{Path(audio_source).suffix}",
-                identities[1],
-            )
-            source_stack.callback(audio.close)
-            rendered = root / f"rendered{Path(output_path).suffix}"
-            proof = _render_from_descriptors(
-                (video, audio),
-                rendered,
-                (video_source, audio_source),
-                duration_policy,
-                project,
-                authorization_decision_ids,
-            )
-            os.replace(rendered, staging)
-        os.replace(staging, output_path)
-        staging = None
-        return proof
-    except OSError:
-        raise ProcessingError("body-swap guarded transaction", 0, "private transaction failed") from None
-    finally:
-        if staging_fd >= 0:
-            with suppress(OSError):
-                os.close(staging_fd)
-        if staging is not None:
-            with suppress(OSError):
-                staging.unlink(missing_ok=True)
+    with _atomic_output(output_path) as staging:
+        try:
+            with (
+                ExitStack() as source_stack,
+                tempfile.TemporaryDirectory(dir=Path(output_path).parent, prefix=".body-swap.") as workspace,
+            ):
+                root = Path(workspace)
+                video = copy_verified_snapshot(video_source, root / f"video{Path(video_source).suffix}", identities[0])
+                source_stack.callback(video.close)
+                audio = copy_verified_snapshot(audio_source, root / f"audio{Path(audio_source).suffix}", identities[1])
+                source_stack.callback(audio.close)
+                rendered = root / f"rendered{Path(output_path).suffix}"
+                proof = _render_from_descriptors(
+                    (video, audio),
+                    rendered,
+                    (video_source, audio_source),
+                    duration_policy,
+                    project,
+                    authorization_decision_ids,
+                )
+                with open(rendered, "rb") as source, _open_staged_writer(staging) as writer:
+                    shutil.copyfileobj(source, writer)
+        except OSError:
+            raise ProcessingError("body-swap guarded transaction", 0, "private transaction failed") from None
+    return proof
 
 
 def body_swap(

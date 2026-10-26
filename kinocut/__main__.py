@@ -84,7 +84,7 @@ def _rewrite_namespaced_argv(argv: list[str]) -> list[str]:
 
     from .cli.namespaces import resolve_namespaced
 
-    boolean_globals = {"-v", "--verbose", "--mcp", "--version"}
+    boolean_globals = {"-v", "--verbose", "--mcp", "--version", "--overwrite"}
     value_globals = {"--format", "--log-file"}
     i = 0
     n = len(argv)
@@ -229,8 +229,11 @@ def main() -> None:
 
             if handle_initial_command(args, use_json=use_json):
                 return
-        if _dispatch_cli(args, use_json=use_json):
-            return
+        from .output_policy import output_operation
+
+        with output_operation(args.allow_existing_output or getattr(args, "overwrite", False)):
+            if _dispatch_cli(args, use_json=use_json):
+                return
 
     except Exception as e:
         if use_json:

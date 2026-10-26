@@ -11,6 +11,9 @@ from kinocut.errors import MCPVideoError
 from kinocut.product.models import CandidateMoment, TranscriptSegment, canonical_dedup_key
 from kinocut.product.shorts_plan import IntakeReport, ReviewDecision, ShortsPlan, load_shorts_plan, save_shorts_plan
 
+# These cases explicitly authorize updates to job-created review plans.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 
 def _candidate() -> CandidateMoment:
     excerpt = "A complete candidate thought."

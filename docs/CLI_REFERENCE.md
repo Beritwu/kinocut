@@ -1,12 +1,29 @@
 # CLI Reference
 
-Published 1.16.2 and its matching development checkout: **203 MCP tools / 177 CLI commands**. Future development additions remain separately marked.
+Published 1.16.4 and its matching development checkout: **203 MCP tools / 177 CLI commands**. Future development additions remain separately marked.
 
 ```
 kino [command] [options]
 ```
 
+Existing output files are refused by default. To replace existing media, pass
+the global flag before the command: `kino --overwrite trim INPUT ...`.
+Pre-existing non-media files (including JSON, text, CSV and TypeScript) remain
+protected; only files created in the same job can be replaced with consent.
+Agent configuration homes and source/output aliases remain protected.
+
+Use one writer per output directory. Before upgrading active jobs, read the
+[ownership and restart requirements](TOOLS.md#upgrading-existing-jobs): legacy
+durable receipts without inode evidence cannot be adopted by the new runtime.
+
 ## Diagnostics
+
+Optional vision calls default to `KINOCUT_VISION_MODE=off`, even with credentials
+or `image-analyze-product --use-ai`. Use host image inspection for provider-neutral
+review. Explicit `local` mode permits only a loopback Anthropic-compatible product
+endpoint; legacy semantic QC requires `remote` consent. Revideo telemetry is
+disabled unless `KINOCUT_REVIDEO_TELEMETRY=true`. See
+[vision and network controls](VISION_PRIVACY.md) for routing and disclosure.
 
 | Command | Description |
 |---------|-------------|
@@ -55,7 +72,7 @@ inspection, decision, protection, derivative, and re-review sequence.
 
 ## Intent, review, and cutfiles
 
-Published surface (since 1.14.1; current 1.16.2). The existing intent/review commands
+Published surface (since 1.14.1; current 1.16.4). The existing intent/review commands
 gain goal compilation and 360 handling in published 1.16.0; there is no separate `kino 360` command.
 
 | Command | Description |

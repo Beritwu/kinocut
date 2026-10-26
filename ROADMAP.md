@@ -1,15 +1,15 @@
 # Improvement Roadmap
 
-Kinocut 1.16.2 is published with 203 MCP tools and 177 CLI commands (`mcp-video` 1.6.17 shim).
+Kinocut 1.16.4 is published with 203 MCP tools and 177 CLI commands (`mcp-video` 1.6.19 shim).
 
-**Published product:** Kinocut **1.16.2** (2026-10-21) · **203 MCP / 177 CLI** · living snapshot [`docs/status/NOW.md`](docs/status/NOW.md)
+**Published product:** Kinocut **1.16.4** (2026-10-24) · **203 MCP / 177 CLI** · living snapshot [`docs/status/NOW.md`](docs/status/NOW.md)
 **Canonical claims:** [`docs/public_claims.json`](docs/public_claims.json)  
 **Human-only residuals:** [`docs/HUMAN_GATES.md`](docs/HUMAN_GATES.md)  
 **Residual portfolio (living truth):** [`docs/status/2026-08-12-residual-maturity-matrix.md`](docs/status/2026-08-12-residual-maturity-matrix.md) · [sound residual DAG](docs/status/2026-08-12-sound-residual-stage-dag.md) · [fixture freeze](docs/status/2026-08-12-sound-fixture-freeze.md) · [L1 truth pass](docs/status/2026-08-12-l1-truth-pass.md) · [phase checkpoints](docs/status/PHASE_CHECKPOINTS.md)  
 **Excellence program (snapshot):** [`docs/status/2026-08-07-kinocut-excellence-audit.md`](docs/status/2026-08-07-kinocut-excellence-audit.md) · handoff [`docs/handoffs/2026-08-07/kinocut-excellence-campaign.md`](docs/handoffs/2026-08-07/kinocut-excellence-campaign.md)  
 **Earlier tip snapshot:** [post-campaign tip status](docs/status/2026-07-27-post-campaign-tip-status.md) (evidence only)
 
-This file is **planning truth for after 1.16.1**. July 2026 status notes and pre-1.3 history live under **Archive** — they are evidence, not current claims. Prefer the **2026-08-12 residual matrix** over any July “S5–S15 incomplete / missing packages” language.
+This file is **planning truth for after 1.16.2**. July 2026 status notes and pre-1.3 history live under **Archive** — they are evidence, not current claims. Prefer the **2026-08-12 residual matrix** over any July “S5–S15 incomplete / missing packages” language.
 
 ---
 

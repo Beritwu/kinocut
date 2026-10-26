@@ -6,6 +6,7 @@ import pytest
 
 from kinocut.errors import MCPVideoError
 from kinocut.ffmpeg_helpers import _atomic_output, _open_staged_writer, _reset_operation_inputs
+from kinocut.output_policy import output_operation
 
 
 @pytest.fixture(autouse=True)
@@ -94,6 +95,7 @@ def test_swap_after_staging_check_is_reported_as_partial_publication(tmp_path, m
 
     monkeypatch.setattr(atomic_publication.os, "replace", swap)
     with (
+        output_operation(overwrite=True),
         pytest.raises(MCPVideoError) as error,
         _atomic_output(str(final)) as staged,
         _open_staged_writer(staged) as stream,
@@ -125,6 +127,7 @@ def test_directory_swap_during_rename_cannot_certify_a_different_returned_path(t
 
     monkeypatch.setattr(atomic_publication.os, "replace", swap)
     with (
+        output_operation(overwrite=True),
         pytest.raises(MCPVideoError) as error,
         _atomic_output(str(final)) as staged,
         _open_staged_writer(staged) as stream,

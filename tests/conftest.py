@@ -21,6 +21,15 @@ def has_ffmpeg() -> bool:
     return shutil.which("ffmpeg") is not None
 
 
+@pytest.fixture
+def overwrite_consent():
+    """Explicit consent for tests of replacement transactions after admission."""
+    from kinocut.output_policy import output_operation
+
+    with output_operation(overwrite=True):
+        yield
+
+
 def has_ffprobe() -> bool:
     return shutil.which("ffprobe") is not None
 
@@ -65,7 +74,7 @@ def rescue_plan() -> RescuePlan:
 
 
 @pytest.fixture(scope="session")
-def sample_video(tmp_path_factory) -> str:
+def _sample_video_source(tmp_path_factory) -> str:
     """Create a 3-second test video with a color bar pattern."""
     if not has_ffmpeg():
         pytest.skip("FFmpeg not installed")
@@ -108,8 +117,16 @@ def sample_video(tmp_path_factory) -> str:
     return video_path
 
 
+@pytest.fixture
+def sample_video(_sample_video_source, tmp_path) -> str:
+    """Isolate edits and derived filenames while reusing the encoded fixture."""
+    target = tmp_path / "test_video.mp4"
+    shutil.copyfile(_sample_video_source, target)
+    return str(target)
+
+
 @pytest.fixture(scope="session")
-def sample_audio(tmp_path_factory) -> str:
+def _sample_audio_source(tmp_path_factory) -> str:
     """Create a 5-second test audio file."""
     if not has_ffmpeg():
         pytest.skip("FFmpeg not installed")
@@ -141,7 +158,7 @@ def sample_audio(tmp_path_factory) -> str:
 
 
 @pytest.fixture(scope="session")
-def sample_audio_wav(tmp_path_factory) -> str:
+def _sample_audio_wav_source(tmp_path_factory) -> str:
     """Create a 5-second audio-only WAV file (no video stream).
 
     Regression fixture for issue #7: a valid audio-only input must not be
@@ -176,7 +193,7 @@ def sample_audio_wav(tmp_path_factory) -> str:
 
 
 @pytest.fixture(scope="session")
-def sample_srt(tmp_path_factory) -> str:
+def _sample_srt_source(tmp_path_factory) -> str:
     """Create a sample SRT subtitle file."""
     srt_dir = tmp_path_factory.mktemp("subs")
     srt_path = srt_dir / "test.srt"
@@ -187,7 +204,7 @@ def sample_srt(tmp_path_factory) -> str:
 
 
 @pytest.fixture(scope="session")
-def sample_vtt(tmp_path_factory) -> str:
+def _sample_vtt_source(tmp_path_factory) -> str:
     """Create a sample WebVTT subtitle file."""
     vtt_dir = tmp_path_factory.mktemp("subs")
     vtt_path = vtt_dir / "test.vtt"
@@ -198,7 +215,7 @@ def sample_vtt(tmp_path_factory) -> str:
 
 
 @pytest.fixture(scope="session")
-def sample_watermark_png(tmp_path_factory) -> str:
+def _sample_watermark_png_source(tmp_path_factory) -> str:
     """Create a PNG image with transparency for watermark tests."""
     if not has_ffmpeg():
         pytest.skip("FFmpeg not installed")
@@ -230,7 +247,7 @@ def sample_watermark_png(tmp_path_factory) -> str:
 
 
 @pytest.fixture(scope="session")
-def sample_video_webm(tmp_path_factory) -> str:
+def _sample_video_webm_source(tmp_path_factory) -> str:
     """Create a 2-second test video in WebM format."""
     if not has_ffmpeg():
         pytest.skip("FFmpeg not installed")
@@ -269,7 +286,7 @@ def sample_video_webm(tmp_path_factory) -> str:
 
 
 @pytest.fixture(scope="session")
-def sample_video_no_audio(tmp_path_factory) -> str:
+def _sample_video_no_audio_source(tmp_path_factory) -> str:
     """Create a 2-second test video without audio track."""
     if not has_ffmpeg():
         pytest.skip("FFmpeg not installed")
@@ -304,7 +321,7 @@ def sample_video_no_audio(tmp_path_factory) -> str:
 
 
 @pytest.fixture(scope="session")
-def sample_video_2(tmp_path_factory) -> str:
+def _sample_video_2_source(tmp_path_factory) -> str:
     """Create a 3-second test video with different resolution for compositing tests."""
     if not has_ffmpeg():
         pytest.skip("FFmpeg not installed")
@@ -345,6 +362,62 @@ def sample_video_2(tmp_path_factory) -> str:
         pytest.skip("Could not generate second test video")
 
     return video_path
+
+
+@pytest.fixture
+def sample_audio(_sample_audio_source, tmp_path) -> str:
+    target = tmp_path / os.path.basename(_sample_audio_source)
+    shutil.copyfile(_sample_audio_source, target)
+    return str(target)
+
+
+@pytest.fixture
+def sample_audio_wav(_sample_audio_wav_source, tmp_path) -> str:
+    target = tmp_path / os.path.basename(_sample_audio_wav_source)
+    shutil.copyfile(_sample_audio_wav_source, target)
+    return str(target)
+
+
+@pytest.fixture
+def sample_srt(_sample_srt_source, tmp_path) -> str:
+    target = tmp_path / os.path.basename(_sample_srt_source)
+    shutil.copyfile(_sample_srt_source, target)
+    return str(target)
+
+
+@pytest.fixture
+def sample_vtt(_sample_vtt_source, tmp_path) -> str:
+    target = tmp_path / os.path.basename(_sample_vtt_source)
+    shutil.copyfile(_sample_vtt_source, target)
+    return str(target)
+
+
+@pytest.fixture
+def sample_watermark_png(_sample_watermark_png_source, tmp_path) -> str:
+    target = tmp_path / os.path.basename(_sample_watermark_png_source)
+    shutil.copyfile(_sample_watermark_png_source, target)
+    return str(target)
+
+
+@pytest.fixture
+def sample_video_webm(_sample_video_webm_source, tmp_path) -> str:
+    target = tmp_path / os.path.basename(_sample_video_webm_source)
+    shutil.copyfile(_sample_video_webm_source, target)
+    return str(target)
+
+
+@pytest.fixture
+def sample_video_no_audio(_sample_video_no_audio_source, tmp_path) -> str:
+    target = tmp_path / os.path.basename(_sample_video_no_audio_source)
+    shutil.copyfile(_sample_video_no_audio_source, target)
+    return str(target)
+
+
+@pytest.fixture
+def sample_video_2(_sample_video_2_source, tmp_path) -> str:
+    target = tmp_path / os.path.basename(_sample_video_2_source)
+    shutil.copyfile(_sample_video_2_source, target)
+    return str(target)
 
 
 @pytest.fixture

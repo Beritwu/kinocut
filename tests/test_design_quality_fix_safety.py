@@ -9,6 +9,9 @@ from kinocut.design_quality.guardrails.fixes import FixesMixin
 from kinocut.errors import InputFileError, MCPVideoError, ProcessingError
 from kinocut.ffmpeg_helpers import _run_ffprobe_json
 
+# Replacement transactions explicitly opt in; default denial has separate coverage.
+pytestmark = pytest.mark.usefixtures("overwrite_consent")
+
 FIXES = (
     "_auto_fix_brightness",
     "_auto_fix_contrast",
